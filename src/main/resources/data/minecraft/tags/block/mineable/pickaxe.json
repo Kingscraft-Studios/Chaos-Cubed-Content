@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "chaos_cubed:sulfur_block",
+    "chaos_cubed:sulfur_slab",
+    "chaos_cubed:sulfur_stairs",
+    "chaos_cubed:sulfur_wall",
+    "chaos_cubed:chiseled_sulfur"
+  ]
+}

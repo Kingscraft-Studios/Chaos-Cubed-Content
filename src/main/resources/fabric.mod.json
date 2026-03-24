@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "chaos_cubed",
+  "version": "${version}",
+  "name": "Chaos Cubed",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "GPL-3.0",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "net.kingscraft.chaoscubed.client.ChaosCubedClient"
+    ],
+    "main": [
+      "net.kingscraft.chaoscubed.ChaosCubed"
+    ]
+  },
+  "mixins": [
+    "chaos_cubed.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
