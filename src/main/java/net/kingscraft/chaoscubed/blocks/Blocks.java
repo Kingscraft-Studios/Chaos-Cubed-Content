@@ -45,6 +45,52 @@ public class Blocks {
             new Block(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.CHISELED_STONE_BRICKS)
                     .registryKey(blockKey("chiseled_sulfur")))
     );
+    public static final Block POLISHED_SULFUR = registerBlock(
+            "polished_sulfur",
+            new Block(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.POLISHED_DIORITE)
+                    .registryKey(blockKey("polished_sulfur")))
+    );
+    public static final Block POLISHED_SULFUR_SLAB = registerBlock(
+            "polished_sulfur_slab",
+            new SlabBlock(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.POLISHED_DIORITE_SLAB)
+                    .registryKey(blockKey("polished_sulfur_slab")))
+    );
+    public static final Block POLISHED_SULFUR_STAIRS = registerBlock(
+            "polished_sulfur_stairs",
+            new StairsBlock(
+                    POLISHED_SULFUR.getDefaultState(),
+                    AbstractBlock.Settings.copy(net.minecraft.block.Blocks.POLISHED_DIORITE_STAIRS)
+                            .registryKey(blockKey("polished_sulfur_stairs"))
+            )
+    );
+    public static final Block POLISHED_SULFUR_WALL = registerBlock(
+            "polished_sulfur_wall",
+            new WallBlock(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.STONE_BRICK_WALL)
+                    .registryKey(blockKey("polished_sulfur_wall")))
+    );
+    public static final Block SULFUR_BRICKS = registerBlock(
+            "sulfur_bricks",
+            new Block(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.STONE_BRICKS)
+                    .registryKey(blockKey("sulfur_bricks")))
+    );
+    public static final Block SULFUR_BRICK_SLAB = registerBlock(
+            "sulfur_brick_slab",
+            new SlabBlock(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.STONE_BRICK_SLAB)
+                    .registryKey(blockKey("sulfur_brick_slab")))
+    );
+    public static final Block SULFUR_BRICK_STAIRS = registerBlock(
+            "sulfur_brick_stairs",
+            new StairsBlock(
+                    SULFUR_BRICKS.getDefaultState(),
+                    AbstractBlock.Settings.copy(net.minecraft.block.Blocks.STONE_BRICK_STAIRS)
+                            .registryKey(blockKey("sulfur_brick_stairs"))
+            )
+    );
+    public static final Block SULFUR_BRICK_WALL = registerBlock(
+            "sulfur_brick_wall",
+            new WallBlock(AbstractBlock.Settings.copy(net.minecraft.block.Blocks.STONE_BRICK_WALL)
+                    .registryKey(blockKey("sulfur_brick_wall")))
+    );
 
     // Helper Methods
     private static RegistryKey<Block> blockKey(String name) {
@@ -71,6 +117,14 @@ public class Blocks {
             entries.add(SULFUR_STAIRS);
             entries.add(SULFUR_WALL);
             entries.add(CHISELED_SULFUR);
+            entries.add(POLISHED_SULFUR);
+            entries.add(POLISHED_SULFUR_SLAB);
+            entries.add(POLISHED_SULFUR_STAIRS);
+            entries.add(POLISHED_SULFUR_WALL);
+            entries.add(SULFUR_BRICKS);
+            entries.add(SULFUR_BRICK_SLAB);
+            entries.add(SULFUR_BRICK_STAIRS);
+            entries.add(SULFUR_BRICK_WALL);
         });
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.NATURAL).register(entries -> {
             entries.add(SULFUR_BLOCK);

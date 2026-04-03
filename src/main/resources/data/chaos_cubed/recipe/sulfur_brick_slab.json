@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "###"
+  ],
+  "key": {
+    "#": "chaos_cubed:sulfur_bricks"
+  },
+  "result": {
+    "id": "chaos_cubed:sulfur_brick_slab",
+    "count": 6
+  }
+}

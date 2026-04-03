@@ -1,0 +1,13 @@
+{
+  "variants": {
+    "type=bottom": {
+      "model": "chaos_cubed:block/sulfur_brick_slab"
+    },
+    "type=double": {
+      "model": "chaos_cubed:block/sulfur_bricks"
+    },
+    "type=top": {
+      "model": "chaos_cubed:block/sulfur_brick_slab_top"
+    }
+  }
+}

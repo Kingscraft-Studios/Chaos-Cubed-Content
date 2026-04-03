@@ -5,10 +5,10 @@
     "##"
   ],
   "key": {
-    "#": "chaos_cubed:sulfur"
+    "#": "chaos_cubed:sulfur_block"
   },
   "result": {
-    "id": "chaos_cubed:sulfur_block",
-    "count": 1
+    "id": "chaos_cubed:polished_sulfur",
+    "count": 4
   }
 }

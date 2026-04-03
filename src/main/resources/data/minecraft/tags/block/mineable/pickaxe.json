@@ -5,6 +5,14 @@
     "chaos_cubed:sulfur_slab",
     "chaos_cubed:sulfur_stairs",
     "chaos_cubed:sulfur_wall",
-    "chaos_cubed:chiseled_sulfur"
+    "chaos_cubed:chiseled_sulfur",
+    "chaos_cubed:polished_sulfur",
+    "chaos_cubed:polished_sulfur_slab",
+    "chaos_cubed:polished_sulfur_stairs",
+    "chaos_cubed:polished_sulfur_wall",
+    "chaos_cubed:sulfur_bricks",
+    "chaos_cubed:sulfur_brick_slab",
+    "chaos_cubed:sulfur_brick_stairs",
+    "chaos_cubed:sulfur_brick_wall"
   ]
 }

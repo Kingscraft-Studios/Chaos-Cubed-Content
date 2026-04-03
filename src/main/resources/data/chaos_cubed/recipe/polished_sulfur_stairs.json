@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "#  ",
+    "## ",
+    "###"
+  ],
+  "key": {
+    "#": "chaos_cubed:polished_sulfur"
+  },
+  "result": {
+    "id": "chaos_cubed:polished_sulfur_stairs",
+    "count": 4
+  }
+}

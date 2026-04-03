@@ -8,5 +8,21 @@
   "block.chaos_cubed.sulfur_wall": "Sulfur Wall",
   "item.chaos_cubed.sulfur_wall": "Sulfur Wall",
   "block.chaos_cubed.chiseled_sulfur": "Chiseled Sulfur",
-  "item.chaos_cubed.chiseled_sulfur": "Chiseled Sulfur"
+  "item.chaos_cubed.chiseled_sulfur": "Chiseled Sulfur",
+  "block.chaos_cubed.polished_sulfur": "Polished Sulfur",
+  "item.chaos_cubed.polished_sulfur": "Polished Sulfur",
+  "block.chaos_cubed.polished_sulfur_slab": "Polished Sulfur Slab",
+  "item.chaos_cubed.polished_sulfur_slab": "Polished Sulfur Slab",
+  "block.chaos_cubed.polished_sulfur_stairs": "Polished Sulfur Stairs",
+  "item.chaos_cubed.polished_sulfur_stairs": "Polished Sulfur Stairs",
+  "block.chaos_cubed.polished_sulfur_wall": "Polished Sulfur Wall",
+  "item.chaos_cubed.polished_sulfur_wall": "Polished Sulfur Wall",
+  "block.chaos_cubed.sulfur_bricks": "Sulfur Bricks",
+  "item.chaos_cubed.sulfur_bricks": "Sulfur Bricks",
+  "block.chaos_cubed.sulfur_brick_slab": "Sulfur Brick Slab",
+  "item.chaos_cubed.sulfur_brick_slab": "Sulfur Brick Slab",
+  "block.chaos_cubed.sulfur_brick_stairs": "Sulfur Brick Stairs",
+  "item.chaos_cubed.sulfur_brick_stairs": "Sulfur Brick Stairs",
+  "block.chaos_cubed.sulfur_brick_wall": "Sulfur Brick Wall",
+  "item.chaos_cubed.sulfur_brick_wall": "Sulfur Brick Wall"
 }
