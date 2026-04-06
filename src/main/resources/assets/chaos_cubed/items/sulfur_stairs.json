@@ -1,6 +1,6 @@
 {
-  "model": {
-    "type": "minecraft:model",
-    "model": "chaos_cubed:item/sulfur_stairs"
-  }
+ "model":{
+  "type":"minecraft:model",
+  "model":"chaos_cubed:item/sulfur_stairs"
+ }
 }

@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "pattern": [
+    "###"
+  ],
+  "key": {
+    "#": "chaos_cubed:cinnabar_bricks"
+  },
+  "result": {
+    "id": "chaos_cubed:cinnabar_brick_slab",
+    "count": 6
+  }
+}

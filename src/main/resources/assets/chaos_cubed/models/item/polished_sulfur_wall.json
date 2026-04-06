@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/wall_inventory",
-  "textures": {
-    "wall": "chaos_cubed:block/polished_sulfur"
-  }
+ "parent":"minecraft:block/wall_inventory",
+ "textures":{
+  "wall":"chaos_cubed:block/polished_sulfur"
+ }
 }

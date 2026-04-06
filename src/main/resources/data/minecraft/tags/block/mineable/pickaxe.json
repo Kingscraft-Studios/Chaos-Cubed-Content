@@ -13,6 +13,19 @@
     "chaos_cubed:sulfur_bricks",
     "chaos_cubed:sulfur_brick_slab",
     "chaos_cubed:sulfur_brick_stairs",
-    "chaos_cubed:sulfur_brick_wall"
+    "chaos_cubed:sulfur_brick_wall",
+    "chaos_cubed:cinnabar_block",
+    "chaos_cubed:cinnabar_slab",
+    "chaos_cubed:cinnabar_stairs",
+    "chaos_cubed:cinnabar_wall",
+    "chaos_cubed:chiseled_cinnabar",
+    "chaos_cubed:polished_cinnabar",
+    "chaos_cubed:polished_cinnabar_slab",
+    "chaos_cubed:polished_cinnabar_stairs",
+    "chaos_cubed:polished_cinnabar_wall",
+    "chaos_cubed:cinnabar_bricks",
+    "chaos_cubed:cinnabar_brick_slab",
+    "chaos_cubed:cinnabar_brick_stairs",
+    "chaos_cubed:cinnabar_brick_wall"
   ]
 }

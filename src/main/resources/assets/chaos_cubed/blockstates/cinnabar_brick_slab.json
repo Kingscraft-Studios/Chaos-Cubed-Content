@@ -1,0 +1,13 @@
+{
+ "variants":{
+  "type=bottom":{
+   "model":"chaos_cubed:block/cinnabar_brick_slab"
+  },
+  "type=double":{
+   "model":"chaos_cubed:block/cinnabar_bricks"
+  },
+  "type=top":{
+   "model":"chaos_cubed:block/cinnabar_brick_slab_top"
+  }
+ }
+}

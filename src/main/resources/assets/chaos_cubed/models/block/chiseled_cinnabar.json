@@ -1,0 +1,6 @@
+{
+ "parent":"minecraft:block/cube_all",
+ "textures":{
+  "all":"chaos_cubed:block/chiseled_cinnabar"
+ }
+}

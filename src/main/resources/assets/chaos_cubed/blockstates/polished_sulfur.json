@@ -1,7 +1,7 @@
 {
-  "variants": {
-    "": {
-      "model": "chaos_cubed:block/polished_sulfur"
-    }
+ "variants":{
+  "":{
+   "model":"chaos_cubed:block/polished_sulfur"
   }
+ }
 }

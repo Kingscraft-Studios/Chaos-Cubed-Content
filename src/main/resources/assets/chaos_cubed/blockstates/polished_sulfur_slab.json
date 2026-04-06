@@ -1,13 +1,13 @@
 {
-  "variants": {
-    "type=bottom": {
-      "model": "chaos_cubed:block/polished_sulfur_slab"
-    },
-    "type=double": {
-      "model": "chaos_cubed:block/polished_sulfur"
-    },
-    "type=top": {
-      "model": "chaos_cubed:block/polished_sulfur_slab_top"
-    }
+ "variants":{
+  "type=bottom":{
+   "model":"chaos_cubed:block/polished_sulfur_slab"
+  },
+  "type=double":{
+   "model":"chaos_cubed:block/polished_sulfur"
+  },
+  "type=top":{
+   "model":"chaos_cubed:block/polished_sulfur_slab_top"
   }
+ }
 }

@@ -3,6 +3,9 @@
   "values": [
     "chaos_cubed:sulfur_wall",
     "chaos_cubed:polished_sulfur_wall",
-    "chaos_cubed:sulfur_brick_wall"
+    "chaos_cubed:sulfur_brick_wall",
+    "chaos_cubed:cinnabar_wall",
+    "chaos_cubed:polished_cinnabar_wall",
+    "chaos_cubed:cinnabar_brick_wall"
   ]
 }

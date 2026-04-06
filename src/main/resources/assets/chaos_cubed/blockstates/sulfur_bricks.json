@@ -1,7 +1,7 @@
 {
-  "variants": {
-    "": {
-      "model": "chaos_cubed:block/sulfur_bricks"
-    }
+ "variants":{
+  "":{
+   "model":"chaos_cubed:block/sulfur_bricks"
   }
+ }
 }

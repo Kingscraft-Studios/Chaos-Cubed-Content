@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "##",
+    "##"
+  ],
+  "key": {
+    "#": "chaos_cubed:cinnabar_block"
+  },
+  "result": {
+    "id": "chaos_cubed:polished_cinnabar",
+    "count": 4
+  }
+}

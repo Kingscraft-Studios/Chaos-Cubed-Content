@@ -1,0 +1,8 @@
+{
+ "parent":"minecraft:block/slab_top",
+ "textures":{
+  "bottom":"chaos_cubed:block/cinnabar_bricks",
+  "side":"chaos_cubed:block/cinnabar_bricks",
+  "top":"chaos_cubed:block/cinnabar_bricks"
+ }
+}

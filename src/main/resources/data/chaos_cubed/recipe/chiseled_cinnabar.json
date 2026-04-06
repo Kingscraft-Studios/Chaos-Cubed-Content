@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "#",
+    "#"
+  ],
+  "key": {
+    "#": "chaos_cubed:cinnabar_slab"
+  },
+  "result": {
+    "id": "chaos_cubed:chiseled_cinnabar",
+    "count": 1
+  }
+}

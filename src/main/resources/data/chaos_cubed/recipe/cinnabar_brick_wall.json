@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "###",
+    "###"
+  ],
+  "key": {
+    "#": "chaos_cubed:cinnabar_bricks"
+  },
+  "result": {
+    "id": "chaos_cubed:cinnabar_brick_wall",
+    "count": 6
+  }
+}

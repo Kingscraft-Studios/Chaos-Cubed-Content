@@ -1,8 +1,8 @@
 {
-  "parent": "minecraft:block/outer_stairs",
-  "textures": {
-    "bottom": "chaos_cubed:block/sulfur_bricks",
-    "side": "chaos_cubed:block/sulfur_bricks",
-    "top": "chaos_cubed:block/sulfur_bricks"
-  }
+ "parent":"minecraft:block/outer_stairs",
+ "textures":{
+  "bottom":"chaos_cubed:block/sulfur_bricks",
+  "side":"chaos_cubed:block/sulfur_bricks",
+  "top":"chaos_cubed:block/sulfur_bricks"
+ }
 }

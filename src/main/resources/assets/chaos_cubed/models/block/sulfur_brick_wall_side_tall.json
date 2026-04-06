@@ -1,6 +1,6 @@
 {
-  "parent": "minecraft:block/template_wall_side_tall",
-  "textures": {
-    "wall": "chaos_cubed:block/sulfur_bricks"
-  }
+ "parent":"minecraft:block/template_wall_side_tall",
+ "textures":{
+  "wall":"chaos_cubed:block/sulfur_bricks"
+ }
 }

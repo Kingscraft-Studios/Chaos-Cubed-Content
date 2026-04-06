@@ -1,0 +1,8 @@
+{
+ "parent":"minecraft:block/slab",
+ "textures":{
+  "bottom":"chaos_cubed:block/polished_cinnabar",
+  "side":"chaos_cubed:block/polished_cinnabar",
+  "top":"chaos_cubed:block/polished_cinnabar"
+ }
+}
