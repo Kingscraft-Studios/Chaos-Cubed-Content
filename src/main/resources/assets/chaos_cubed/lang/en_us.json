@@ -51,5 +51,7 @@
  "block.chaos_cubed.cinnabar_brick_stairs":"Cinnabar Brick Stairs",
  "item.chaos_cubed.cinnabar_brick_stairs":"Cinnabar Brick Stairs",
  "block.chaos_cubed.cinnabar_brick_wall":"Cinnabar Brick Wall",
- "item.chaos_cubed.cinnabar_brick_wall":"Cinnabar Brick Wall"
+ "item.chaos_cubed.cinnabar_brick_wall":"Cinnabar Brick Wall",
+
+ "biome.chaos_cubed.sulfur_caves": "Sulfur Caves"
 }
