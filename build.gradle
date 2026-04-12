@@ -67,16 +67,6 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-tasks.named('build') {
-    dependsOn(tasks.named('runDatagen'))
-}
-
-tasks.named('runClient') {
-    dependsOn(tasks.named('runDatagen'))
-}
-tasks.named('runServer') {
-    dependsOn(tasks.named('runDatagen'))
-}
 
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
@@ -87,6 +77,24 @@ java {
     // if it is present.
     // If you remove this line, sources will not be generated.
     withSourcesJar()
+}
+
+// --- MOVE THIS BLOCK TO THE VERY BOTTOM ---
+
+tasks.named('sourcesJar') {
+    dependsOn(tasks.named('runDatagen'))
+}
+
+tasks.named('remapJar') {
+    dependsOn(tasks.named('runDatagen'))
+}
+
+tasks.named('runClient') {
+    dependsOn(tasks.named('runDatagen'))
+}
+
+tasks.named('runServer') {
+    dependsOn(tasks.named('runDatagen'))
 }
 
 jar {
