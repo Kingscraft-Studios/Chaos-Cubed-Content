@@ -77,9 +77,6 @@ tasks.named('runClient') {
 tasks.named('runServer') {
     dependsOn(tasks.named('runDatagen'))
 }
-tasks.named('processResources') {
-    dependsOn(tasks.named('runDatagen'))
-}
 
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
