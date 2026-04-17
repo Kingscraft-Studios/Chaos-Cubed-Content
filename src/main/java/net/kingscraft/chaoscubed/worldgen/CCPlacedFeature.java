@@ -22,11 +22,11 @@ public class CCPlacedFeature {
 
         // 4. Corrected PlacementModifier names and YOffset -> VerticalAnchor
         List<PlacementModifier> modifiers = List.of(
-                CountPlacement.of(10),
+                CountPlacement.of(3),
                 InSquarePlacement.spread(), // SquarePlacementModifier -> InSquarePlacement
                 HeightRangePlacement.uniform( // HeightRangePlacementModifier -> HeightRangePlacement
                         VerticalAnchor.bottom(), // YOffset -> VerticalAnchor
-                        VerticalAnchor.absolute(50) // YOffset.fixed -> VerticalAnchor.absolute
+                        VerticalAnchor.absolute(32) // Keep sulfur generation concentrated in deeper cave space
                 ),
                 BiomeFilter.biome() // BiomePlacementModifier -> BiomeFilter
         );

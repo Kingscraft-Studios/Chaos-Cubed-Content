@@ -1,12 +1,8 @@
 package net.kingscraft.chaoscubed;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.biome.v1.BiomeModifications;
-import net.fabricmc.fabric.api.biome.v1.BiomeSelectors;
 import net.kingscraft.chaoscubed.blocks.ModBlocks;
 import net.kingscraft.chaoscubed.worldgen.WorldGeneration;
-import net.minecraft.world.level.biome.Biomes;
-import net.minecraft.world.level.levelgen.GenerationStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,12 +15,6 @@ public class ChaosCubed implements ModInitializer {
         try {
             ModBlocks.registerModBlocks();
             WorldGeneration.register();
-            BiomeModifications.addFeature(
-                    BiomeSelectors.foundInOverworld()
-                            .and(BiomeSelectors.excludeByKey(Biomes.DRIPSTONE_CAVES)),
-                    GenerationStep.Decoration.UNDERGROUND_DECORATION,
-                    WorldGeneration.SULFUR_CAVE_PLACED
-            );
             LOGGER.info("Initialized Chaos Cubed");
         } catch (RuntimeException e) {
             ChaosCubed.LOGGER.error("A Runtime Error occurred while initializing ChaosCubed {}", e.toString());
