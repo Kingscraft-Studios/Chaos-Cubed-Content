@@ -53,5 +53,8 @@
  "block.chaos_cubed.cinnabar_brick_wall":"Cinnabar Brick Wall",
  "item.chaos_cubed.cinnabar_brick_wall":"Cinnabar Brick Wall",
 
- "biome.chaos_cubed.sulfur_caves": "Sulfur Caves"
+ "biome.chaos_cubed.sulfur_caves": "Sulfur Caves",
+ "entity.chaos_cubed.sulfur_cube": "Sulfur Cube",
+
+ "item.chaos_cubed.sulfur_cube_spawn_egg": "Sulfur Cube Spawn Egg"
 }

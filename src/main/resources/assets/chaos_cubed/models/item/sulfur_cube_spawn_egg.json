@@ -1,0 +1,6 @@
+{
+ "parent": "minecraft:item/generated",
+ "textures": {
+  "layer0": "chaos_cubed:item/sulfur_cube_spawn_egg"
+ }
+}
