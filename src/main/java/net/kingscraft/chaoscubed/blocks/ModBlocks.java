@@ -18,11 +18,13 @@ public class ModBlocks {
     public static final Block SULFUR_BLOCK = registerBlock(
             "sulfur_block",
             new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.DIORITE)
+                    .isValidSpawn((state, level, pos, type) -> true)
                     .setId(blockKey("sulfur_block")))
     );
     public static final Block CINNABAR_BLOCK = registerBlock(
             "cinnabar_block",
             new Block(BlockBehaviour.Properties.ofFullCopy(Blocks.DIORITE)
+                    .isValidSpawn((state, level, pos, type) -> true)
                     .setId(blockKey("cinnabar_block")))
     );
     public static final Block SULFUR_SLAB = registerBlock(

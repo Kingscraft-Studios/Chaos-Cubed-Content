@@ -7,54 +7,88 @@ import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.geom.builders.*;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import net.kingscraft.chaoscubed.entity.client.sulfurcube.SulfurCubeRenderState;
 
 public class SulfurCubeModel extends EntityModel<SulfurCubeRenderState> {
 
-    public static final ModelLayerLocation LAYER =
-            new ModelLayerLocation(
-                    Identifier.fromNamespaceAndPath("chaos_cubed", "sulfur_cube"),
-                    "main"
-            );
+	public static final ModelLayerLocation LAYER =
+			new ModelLayerLocation(
+					Identifier.fromNamespaceAndPath("chaos_cubed", "sulfur_cube"),
+					"main"
+			);
 
-    private final ModelPart cube;
+	private final ModelPart bone;
+	private final ModelPart inner;
+	private final ModelPart outer;
 
-    public SulfurCubeModel(ModelPart root) {
+	public SulfurCubeModel(ModelPart root) {
         super(root);
-        this.cube = root.getChild("cube");
-    }
+        this.bone = root.getChild("bone");
+		this.inner = this.bone.getChild("inner");
+		this.outer = this.bone.getChild("outer");
+	}
+	public static LayerDefinition createBodyLayer() {
+		MeshDefinition modelData = new MeshDefinition();
+		PartDefinition modelPartData = modelData.getRoot();
+		PartDefinition bone = modelPartData.addOrReplaceChild("bone", CubeListBuilder.create(), PartPose.offset(0.0F, 24.0F, 0.0F));
 
-    public static LayerDefinition createBodyLayer() {
-        MeshDefinition mesh = new MeshDefinition();
-        PartDefinition root = mesh.getRoot();
+		PartDefinition inner = bone.addOrReplaceChild("inner", CubeListBuilder.create().texOffs(0, 36).addBox(-8.0F, -16.0F, -8.0F, 16.0F, 16.0F, 16.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 0.0F));
 
-        root.addOrReplaceChild(
-                "cube",
-                CubeListBuilder.create()
-                        .texOffs(0, 0)
-                        // Change the Y origin from -8 to -16
-                        // This makes the box sit ON TOP of the pivot point
-                        .addBox(-8, -16, -8, 16, 16, 16),
-                PartPose.offset(0, 24, 0)
-        );
+		PartDefinition outer = bone.addOrReplaceChild("outer", CubeListBuilder.create().texOffs(0, 0).addBox(-9.0F, -17.0F, -9.0F, 18.0F, 18.0F, 18.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 0.0F, 0.0F));
+		return LayerDefinition.create(modelData, 128, 128);
+	}
 
-        return LayerDefinition.create(mesh, 64, 64);
-    }
+	@Override
+	public void setupAnim(SulfurCubeRenderState state) {
+		this.resetPose();
 
-    @Override
-    public void setupAnim(SulfurCubeRenderState state) {
-        resetPose();
-        float age = state.ageInTicks;
+		float age = state.ageInTicks;
 
-        float bounce = Mth.sin(age * 0.4F) * 0.25F;
+		// small idle motion (NOT fake bounce, just life breathing)
+		float idle = Mth.sin(age * 0.15F) * 0.03F;
 
-        // squash/stretch illusion
-        float squash = Mth.clamp(bounce, -0.15F, 0.15F);
+		float squash = 0.0F;
 
-        cube.y = 24.0F + bounce;
+		// landing impact
+		if (state.justLanded) {
+			squash = 0.12F;
+		}
 
-        cube.xScale = 1.0F + (-squash);
-        cube.zScale = 1.0F + (-squash);
-        cube.yScale = 1.0F + squash;
-    }
+		//  airborne stretch
+		if (!state.isOnGround) {
+			squash = -0.05F;
+		}
+
+		//  safety clamp (CRITICAL FIX for popping)
+		float safeSquash = Mth.clamp(squash, -0.08F, 0.08F);
+
+		//  anchor movement (stable + idle life)
+		this.bone.y = 24.0F + idle;
+
+		//  RESET
+		this.inner.xScale = 1.0F;
+		this.inner.yScale = 1.0F;
+		this.inner.zScale = 1.0F;
+
+		this.outer.xScale = 1.0F;
+		this.outer.yScale = 1.0F;
+		this.outer.zScale = 1.0F;
+
+		// INNER (controlled volume-safe deformation)
+		this.inner.xScale = 1.0F - safeSquash;
+		this.inner.yScale = 1.0F + safeSquash * 1.2F; // reduced from 2.0
+		this.inner.zScale = 1.0F - safeSquash;
+
+		// OUTER (soft containment shell)
+		this.outer.xScale = 1.0F - safeSquash * 0.5F;
+		this.outer.yScale = 1.0F + safeSquash * 0.6F;
+		this.outer.zScale = 1.0F - safeSquash * 0.5F;
+
+		// OPTIONAL: slight damping on ground
+		if (state.isOnGround && !state.justLanded) {
+			this.inner.xScale *= 0.995F;
+			this.inner.zScale *= 0.995F;
+			this.outer.xScale *= 0.998F;
+			this.outer.zScale *= 0.998F;
+		}
+	}
 }

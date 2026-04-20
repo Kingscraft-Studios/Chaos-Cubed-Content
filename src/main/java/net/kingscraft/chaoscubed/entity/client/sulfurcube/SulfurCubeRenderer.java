@@ -6,7 +6,6 @@ import net.kingscraft.chaoscubed.entity.SulfurCubeEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.resources.Identifier;
-import net.kingscraft.chaoscubed.entity.client.sulfurcube.SulfurCubeRenderState;
 
 
 public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, SulfurCubeRenderState, SulfurCubeModel> {
@@ -25,16 +24,38 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
     public void extractRenderState(SulfurCubeEntity entity, SulfurCubeRenderState state, float partialTick) {
         super.extractRenderState(entity, state, partialTick);
 
-        // Use variables already in the LivingEntityRenderState you shared
         state.isBaby = entity.isBaby();
+        state.ageInTicks = (float) entity.tickCount + partialTick;
 
-        // Custom variables for your bounce animation
-        state.ageInTicks = (float)entity.tickCount + partialTick;
-        state.isOnGround = entity.onGround();
+        // ─────────────────────────────
+        //  PHYSICS INFO
+        // ─────────────────────────────
+        double vy = entity.getDeltaMovement().y;
+
+        boolean currentGround = entity.onGround();
+        boolean previousGround = state.isOnGround;
+
+        // velocity-based logic
+        state.fallSpeed = (float) vy;
+        state.isFalling = vy < -0.08;
+
+        //  prediction (THIS removes "late feeling")
+        state.willLandSoon = state.isFalling && currentGround;
+
+        // actual landing detection
+        state.justLanded = !previousGround && currentGround;
+
+        state.wasOnGround = previousGround;
+        state.isOnGround = currentGround;
     }
 
     @Override
     public Identifier getTextureLocation(SulfurCubeRenderState state) {
         return Identifier.fromNamespaceAndPath(ChaosCubed.MODID, "textures/entity/sulfur_cube.png");
+    }
+
+    @Override
+    protected boolean shouldShowName(SulfurCubeEntity entity, double distance) {
+        return false;
     }
 }
