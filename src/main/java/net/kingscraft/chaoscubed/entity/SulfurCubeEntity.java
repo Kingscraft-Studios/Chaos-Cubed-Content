@@ -1,5 +1,11 @@
 package net.kingscraft.chaoscubed.entity;
 
+import net.kingscraft.chaoscubed.particles.ModParticles;
+import net.kingscraft.chaoscubed.sounds.ModSounds;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.util.Mth;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -9,6 +15,7 @@ import net.minecraft.world.entity.ai.control.MoveControl;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import org.jspecify.annotations.Nullable;
 
 import java.util.EnumSet;
 
@@ -33,6 +40,73 @@ public class SulfurCubeEntity extends PathfinderMob {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 8.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.3);
+    }
+
+    @Override
+    protected @Nullable SoundEvent getDeathSound() {
+        return ModSounds.SULFUR_CUBE_DEATH;
+    }
+
+    @Override
+    protected @Nullable SoundEvent getHurtSound(DamageSource damageSource) {
+        return ModSounds.SULFUR_CUBE_HURT;
+    }
+
+    @Override
+    public void jumpFromGround() {
+        super.jumpFromGround();
+        this.playSound(ModSounds.SULFUR_CUBE_JUMP, 1.0F, 1.0F + (this.random.nextFloat() * 0.1F));
+    }
+
+    public float targetSquish;
+    public float prevSquish;
+    public float squish;
+
+    @Override
+    public void aiStep() {
+        super.aiStep(); // Moved to the top to ensure physics are processed
+
+        this.prevSquish = this.squish;
+
+        // 1. SPRING PHYSICS
+        this.squish += (this.targetSquish - this.squish) * 0.5F;
+        this.targetSquish *= 0.6F;
+
+        // 2. THE LANDING TRIGGER
+        if (this.onGround()) {
+            if (this.prevSquish < 0.0F) {
+                float impact = (float)Math.abs(this.getDeltaMovement().y);
+                this.targetSquish = impact * 2.0F;
+
+                this.spawnSqualParticles();
+                this.playSound(ModSounds.SULFUR_CUBE_SQUISH, 1.0F, 1.0F);
+            }
+        } else {
+            // 3. THE JUMP STRETCH (Visual cue only)
+            this.targetSquish = -0.15F;
+        }
+    }
+
+    private void spawnSqualParticles() {
+        // Slimes spawn particles proportional to their size
+        int count = this.isBaby() ? 3 : 10;
+
+        for (int i = 0; i < count; ++i) {
+            // Randomize position around the base of the cube
+            float angle = this.random.nextFloat() * ((float)Math.PI * 2F);
+            float distance = this.random.nextFloat() * 0.6F + 0.4F;
+            double xOff = (double)(Mth.sin(angle) * distance);
+            double zOff = (double)(Mth.cos(angle) * distance);
+
+            // SNEEZE is the best "Sulfur" particle (Yellow/Green cloud)
+            this.level().addParticle(
+                    ModParticles.SULFUR_GOO,
+                    this.getX() + xOff,
+                    this.getY() + 0.1D, // Slightly above ground level
+                    this.getZ() + zOff,
+                    0.0D, 0.0D, 0.0D
+            );
+        }
     }
 
     static class SulfurCubeLookAndPauseGoal extends Goal {

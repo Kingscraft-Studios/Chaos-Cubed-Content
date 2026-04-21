@@ -1,0 +1,50 @@
+{
+  "sulfur_cube_death": {
+    "subtitle": "subtitles.chaos_cubed.sulfur_cube_death",
+    "sounds": [
+      "chaos_cubed:sulfur_cube/death/death"
+    ]
+  },
+  "sulfur_cube_jump": {
+    "subtitle": "subtitles.chaos_cubed.sulfur_cube_jump",
+    "sounds": [
+      "chaos_cubed:sulfur_cube/jump/jump1",
+      "chaos_cubed:sulfur_cube/jump/jump2",
+      "chaos_cubed:sulfur_cube/jump/jump3",
+      "chaos_cubed:sulfur_cube/jump/jump4",
+      "chaos_cubed:sulfur_cube/jump/jump5",
+      "chaos_cubed:sulfur_cube/jump/jump6",
+      "chaos_cubed:sulfur_cube/jump/jump7",
+      "chaos_cubed:sulfur_cube/jump/jump8",
+      "chaos_cubed:sulfur_cube/jump/jump9",
+      "chaos_cubed:sulfur_cube/jump/jump10",
+      "chaos_cubed:sulfur_cube/jump/jump11"
+    ]
+  },
+  "sulfur_cube_squish": {
+    "subtitle": "subtitles.chaos_cubed.sulfur_cube_squish",
+    "sounds": [
+      "chaos_cubed:sulfur_cube/squish/squish1",
+      "chaos_cubed:sulfur_cube/squish/squish2",
+      "chaos_cubed:sulfur_cube/squish/squish3",
+      "chaos_cubed:sulfur_cube/squish/squish4",
+      "chaos_cubed:sulfur_cube/squish/squish5",
+      "chaos_cubed:sulfur_cube/squish/squish6",
+      "chaos_cubed:sulfur_cube/squish/squish7",
+      "chaos_cubed:sulfur_cube/squish/squish8",
+      "chaos_cubed:sulfur_cube/squish/squish9",
+      "chaos_cubed:sulfur_cube/squish/squish10",
+      "chaos_cubed:sulfur_cube/squish/squish11"
+    ]
+  },
+
+  "sulfur_cube_hit": {
+    "subtitle": "subtitles.chaos_cubed.sulfur_cube_hit",
+    "sounds": [
+      "chaos_cubed:sulfur_cube/hit/hit1",
+      "chaos_cubed:sulfur_cube/hit/hit2",
+      "chaos_cubed:sulfur_cube/hit/hit3",
+      "chaos_cubed:sulfur_cube/hit/hit4"
+    ]
+  }
+}

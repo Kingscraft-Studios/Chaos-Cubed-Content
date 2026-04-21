@@ -41,54 +41,35 @@ public class SulfurCubeModel extends EntityModel<SulfurCubeRenderState> {
 	public void setupAnim(SulfurCubeRenderState state) {
 		this.resetPose();
 
-		float age = state.ageInTicks;
+		// 's' represents the squish amount from the entity
+		float s = state.squishAmount;
 
-		// small idle motion (NOT fake bounce, just life breathing)
-		float idle = Mth.sin(age * 0.15F) * 0.03F;
+		// Anchor the cube to the ground (24 is the floor level in Blockbench)
+		this.bone.y = 24.0F;
 
-		float squash = 0.0F;
+		// ─────────────────────────────────────────────────────────
+		// THE SLIME MATH
+		// ─────────────────────────────────────────────────────────
 
-		// landing impact
-		if (state.justLanded) {
-			squash = 0.12F;
-		}
+		// As it gets shorter (Y), it gets wider (X & Z) to keep its "volume"
+		float yScale = 1.0F - s;
+		float xzScale = 1.0F + s;
 
-		//  airborne stretch
-		if (!state.isOnGround) {
-			squash = -0.05F;
-		}
+		// Apply to the Inner Cube (The Core)
+		this.inner.yScale = yScale;
+		this.inner.xScale = xzScale;
+		this.inner.zScale = xzScale;
 
-		//  safety clamp (CRITICAL FIX for popping)
-		float safeSquash = Mth.clamp(squash, -0.08F, 0.08F);
+		// Apply to the Outer Cube (The Shell)
+		// We multiply 's' by 0.8 to make the shell move a bit less than the core
+		// This creates a "jelly" layered effect
+		float shellS = s * 0.8F;
+		this.outer.yScale = 1.0F - shellS;
+		this.outer.xScale = 1.0F + shellS;
+		this.outer.zScale = 1.0F + shellS;
 
-		//  anchor movement (stable + idle life)
-		this.bone.y = 24.0F + idle;
-
-		//  RESET
-		this.inner.xScale = 1.0F;
-		this.inner.yScale = 1.0F;
-		this.inner.zScale = 1.0F;
-
-		this.outer.xScale = 1.0F;
-		this.outer.yScale = 1.0F;
-		this.outer.zScale = 1.0F;
-
-		// INNER (controlled volume-safe deformation)
-		this.inner.xScale = 1.0F - safeSquash;
-		this.inner.yScale = 1.0F + safeSquash * 1.2F; // reduced from 2.0
-		this.inner.zScale = 1.0F - safeSquash;
-
-		// OUTER (soft containment shell)
-		this.outer.xScale = 1.0F - safeSquash * 0.5F;
-		this.outer.yScale = 1.0F + safeSquash * 0.6F;
-		this.outer.zScale = 1.0F - safeSquash * 0.5F;
-
-		// OPTIONAL: slight damping on ground
-		if (state.isOnGround && !state.justLanded) {
-			this.inner.xScale *= 0.995F;
-			this.inner.zScale *= 0.995F;
-			this.outer.xScale *= 0.998F;
-			this.outer.zScale *= 0.998F;
-		}
+		// Subtle idle "breathing" using a sine wave
+		float breathe = Mth.cos(state.ageInTicks * 0.1F) * 0.01F;
+		this.inner.yScale += breathe;
 	}
 }

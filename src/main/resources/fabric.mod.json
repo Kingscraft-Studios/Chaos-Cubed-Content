@@ -22,6 +22,7 @@
       "net.kingscraft.chaoscubed.terrablender.TerraBlenderInit"
     ]
   },
+  "accessWidener": "chaos_cubed.classtweaker",
   "mixins": [
     "chaos_cubed.mixins.json"
   ],

@@ -6,6 +6,7 @@ import net.kingscraft.chaoscubed.entity.SulfurCubeEntity;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 
 
 public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, SulfurCubeRenderState, SulfurCubeModel> {
@@ -24,29 +25,16 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
     public void extractRenderState(SulfurCubeEntity entity, SulfurCubeRenderState state, float partialTick) {
         super.extractRenderState(entity, state, partialTick);
 
+        // Keep these basic ones
         state.isBaby = entity.isBaby();
+
+        // 1.21.11 uses ageInTicks from the base class,
+        // but if you need it specifically for your model math:
         state.ageInTicks = (float) entity.tickCount + partialTick;
 
-        // ─────────────────────────────
-        //  PHYSICS INFO
-        // ─────────────────────────────
-        double vy = entity.getDeltaMovement().y;
-
-        boolean currentGround = entity.onGround();
-        boolean previousGround = state.isOnGround;
-
-        // velocity-based logic
-        state.fallSpeed = (float) vy;
-        state.isFalling = vy < -0.08;
-
-        //  prediction (THIS removes "late feeling")
-        state.willLandSoon = state.isFalling && currentGround;
-
-        // actual landing detection
-        state.justLanded = !previousGround && currentGround;
-
-        state.wasOnGround = previousGround;
-        state.isOnGround = currentGround;
+        // REPLACE all the old physics code with this one line:
+        // This smoothly blends the squish from the last tick to the current tick
+        state.squishAmount = Mth.lerp(partialTick, entity.prevSquish, entity.squish);
     }
 
     @Override

@@ -56,5 +56,10 @@
  "biome.chaos_cubed.sulfur_caves": "Sulfur Caves",
  "entity.chaos_cubed.sulfur_cube": "Sulfur Cube",
 
- "item.chaos_cubed.sulfur_cube_spawn_egg": "Sulfur Cube Spawn Egg"
+ "item.chaos_cubed.sulfur_cube_spawn_egg": "Sulfur Cube Spawn Egg",
+
+ "subtitles.chaos_cubed.sulfur_cube_death": "Sulfur Cube dies",
+ "subtitles.chaos_cubed.sulfur_cube_jump": "Sulfur Cube jumps",
+ "subtitles.chaos_cubed.sulfur_cube_squish": "Sulfur Cube lands",
+ "subtitles.chaos_cubed.sulfur_cube_hit": "Sulfur Cube hurts"
 }
