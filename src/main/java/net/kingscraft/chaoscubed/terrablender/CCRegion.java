@@ -6,6 +6,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.biome.Climate;
 import terrablender.api.Region;
 import terrablender.api.ParameterUtils;
@@ -20,40 +21,20 @@ public class CCRegion extends Region {
 
     @Override
     public void addBiomes(Registry<Biome> registry, Consumer<Pair<Climate.ParameterPoint, ResourceKey<Biome>>> mapper) {
-        // Register sulfur caves in a small subset of underground climate points so they form pockets
-        // instead of replacing all dripstone caves across the world.
-        this.addBiome(
-                mapper,
-                ParameterUtils.Temperature.WARM,
-                ParameterUtils.Humidity.DRY,
-                ParameterUtils.Continentalness.MID_INLAND,
-                ParameterUtils.Erosion.EROSION_4,
-                ParameterUtils.Weirdness.LOW_SLICE_NORMAL_DESCENDING,
-                ParameterUtils.Depth.UNDERGROUND,
-                0.0F,
-                WorldGeneration.SULFUR_CAVES
-        );
-        this.addBiome(
-                mapper,
-                ParameterUtils.Temperature.WARM,
-                ParameterUtils.Humidity.NEUTRAL,
-                ParameterUtils.Continentalness.FAR_INLAND,
-                ParameterUtils.Erosion.EROSION_5,
-                ParameterUtils.Weirdness.VALLEY,
-                ParameterUtils.Depth.UNDERGROUND,
-                0.0F,
-                WorldGeneration.SULFUR_CAVES
-        );
-        this.addBiome(
-                mapper,
-                ParameterUtils.Temperature.HOT,
-                ParameterUtils.Humidity.DRY,
-                ParameterUtils.Continentalness.FAR_INLAND,
-                ParameterUtils.Erosion.EROSION_4,
-                ParameterUtils.Weirdness.MID_SLICE_NORMAL_ASCENDING,
-                ParameterUtils.Depth.UNDERGROUND,
-                0.0F,
-                WorldGeneration.SULFUR_CAVES
-        );
+        this.addModifiedVanillaOverworldBiomes(mapper, builder -> {
+            // We create a very specific point that only targets the "Deep Underground"
+            // and "Warm/Dry" conditions.
+            Climate.ParameterPoint sulfurCaveCondition = new ParameterUtils.ParameterPointListBuilder()
+                    .temperature(ParameterUtils.Temperature.WARM, ParameterUtils.Temperature.HOT)
+                    .humidity(ParameterUtils.Humidity.DRY, ParameterUtils.Humidity.NEUTRAL)
+                    // We use the 'Caves' depth helper from TerraBlender
+                    .depth(ParameterUtils.Depth.UNDERGROUND, ParameterUtils.Depth.FLOOR)
+                    .build().get(0);
+
+            // Instead of adding a new point that leaks, we tell TerraBlender:
+            // "In areas that match sulfurCaveCondition, replace the local cave with Sulfur Caves"
+            builder.replaceBiome(Biomes.LUSH_CAVES, WorldGeneration.SULFUR_CAVES);
+            builder.replaceBiome(Biomes.DRIPSTONE_CAVES, WorldGeneration.SULFUR_CAVES);
+        });
     }
 }

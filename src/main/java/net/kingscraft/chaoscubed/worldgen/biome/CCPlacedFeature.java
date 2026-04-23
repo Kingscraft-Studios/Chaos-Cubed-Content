@@ -1,5 +1,6 @@
-package net.kingscraft.chaoscubed.worldgen;
+package net.kingscraft.chaoscubed.worldgen.biome;
 
+import net.kingscraft.chaoscubed.worldgen.WorldGeneration;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.worldgen.BootstrapContext;

@@ -1,0 +1,6 @@
+{
+  "type": "chaos_cubed:sulfur_pool",
+  "biomes": "#minecraft:is_overworld",
+  "spawn_overrides": {},
+  "step": "surface_structures"
+}

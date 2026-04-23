@@ -1,4 +1,6 @@
 // 1.21.11	-999999999-01-01T00:00:00	Chaos Cubed/Chaos Cubed World Gen
-eff719cccfc909880f46953793c3e5a10010fefc data/chaos_cubed/worldgen/biome/sulfur_caves.json
+758b9b31e724703b11bba4e7c503a8eeeb84444e data/chaos_cubed/worldgen/biome/sulfur_caves.json
 3f8ca54df7b6c21e0cb5f35135d305e6766ef41e data/chaos_cubed/worldgen/configured_feature/sulfur_caves.json
 ee9565c5ac3d876cda0d1e629025cbcff3840db6 data/chaos_cubed/worldgen/placed_feature/sulfur_caves.json
+95f1fbf9e5257c76bcff9ebee50054b45df5a9b6 data/chaos_cubed/worldgen/structure/sulfur_pool.json
+5c498a928fcf11e316a2539ac33859ce445b7717 data/chaos_cubed/worldgen/structure_set/sulfur_pool.json

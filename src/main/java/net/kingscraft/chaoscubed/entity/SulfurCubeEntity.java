@@ -2,8 +2,15 @@ package net.kingscraft.chaoscubed.entity;
 
 import net.kingscraft.chaoscubed.particles.ModParticles;
 import net.kingscraft.chaoscubed.sounds.ModSounds;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -14,12 +21,25 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.MoveControl;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ShearsItem;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jspecify.annotations.Nullable;
 
 import java.util.EnumSet;
 
 public class SulfurCubeEntity extends PathfinderMob {
+    private static final EntityDataAccessor<BlockState> DATA_ABSORBED_BLOCK =
+            SynchedEntityData.defineId(SulfurCubeEntity.class, EntityDataSerializers.BLOCK_STATE);
 
     public SulfurCubeEntity(EntityType<? extends PathfinderMob> type, Level world) {
         super(type, world);
@@ -40,6 +60,40 @@ public class SulfurCubeEntity extends PathfinderMob {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 8.0)
                 .add(Attributes.MOVEMENT_SPEED, 0.3);
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_ABSORBED_BLOCK, Blocks.AIR.defaultBlockState());
+    }
+
+    @Override
+    public void addAdditionalSaveData(ValueOutput tag) {
+        super.addAdditionalSaveData(tag);
+
+        if (!this.hasAbsorbedBlock()) {
+            return;
+        }
+
+        Identifier blockId = BuiltInRegistries.BLOCK.getKey(this.getAbsorbedBlockState().getBlock());
+        if (blockId != null) {
+            tag.putString("AbsorbedBlock", blockId.toString());
+        }
+    }
+
+    @Override
+    public void readAdditionalSaveData(ValueInput tag) {
+        super.readAdditionalSaveData(tag);
+
+        Identifier blockId = tag.getString("AbsorbedBlock").map(Identifier::tryParse).orElse(null);
+        if (blockId == null) {
+            this.setAbsorbedBlockState(Blocks.AIR.defaultBlockState());
+            return;
+        }
+
+        Block block = BuiltInRegistries.BLOCK.getOptional(blockId).orElse(Blocks.AIR);
+        this.setAbsorbedBlockState(block.defaultBlockState());
     }
 
     @Override
@@ -87,6 +141,40 @@ public class SulfurCubeEntity extends PathfinderMob {
         }
     }
 
+    public BlockState getAbsorbedBlockState() {
+        return this.entityData.get(DATA_ABSORBED_BLOCK);
+    }
+
+    public boolean hasAbsorbedBlock() {
+        return !this.getAbsorbedBlockState().isAir();
+    }
+
+    private void setAbsorbedBlockState(BlockState state) {
+        this.entityData.set(DATA_ABSORBED_BLOCK, state);
+    }
+
+    @Override
+    protected InteractionResult mobInteract(Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+
+        if (stack.getItem() instanceof BlockItem blockItem) {
+            BlockState state = blockItem.getBlock().defaultBlockState();
+            if (!state.isAir()) {
+                if (!this.level().isClientSide()) {
+                    this.setAbsorbedBlockState(state);
+                    this.playSound(ModSounds.SULFUR_CUBE_ABSORB, 1.0F, 0.95F + this.random.nextFloat() * 0.1F);
+                    if (!player.getAbilities().instabuild) {
+                        stack.shrink(1);
+                    }
+                }
+
+                return InteractionResult.SUCCESS;
+            }
+        }
+
+        return super.mobInteract(player, hand);
+    }
+
     private void spawnSqualParticles() {
         // Slimes spawn particles proportional to their size
         int count = this.isBaby() ? 3 : 10;
@@ -98,13 +186,13 @@ public class SulfurCubeEntity extends PathfinderMob {
             double xOff = (double)(Mth.sin(angle) * distance);
             double zOff = (double)(Mth.cos(angle) * distance);
 
-            // SNEEZE is the best "Sulfur" particle (Yellow/Green cloud)
+
             this.level().addParticle(
                     ModParticles.SULFUR_GOO,
                     this.getX() + xOff,
-                    this.getY() + 0.1D, // Slightly above ground level
-                    this.getZ() + zOff,
-                    0.0D, 0.0D, 0.0D
+                        this.getY() + 0.1D, // Slightly above ground level
+                        this.getZ() + zOff,
+                        0.0D, 0.0D, 0.0D
             );
         }
     }

@@ -21,6 +21,14 @@
       "chaos_cubed:sulfur_cube/jump/jump11"
     ]
   },
+  "sulfur_cube_absorb": {
+    "subtitle": "subtitles.chaos_cubed.sulfur_cube_absorb",
+    "sounds": [
+      "chaos_cubed:sulfur_cube/absorb/absorb1",
+      "chaos_cubed:sulfur_cube/absorb/absorb2",
+      "chaos_cubed:sulfur_cube/absorb/absorb3"
+    ]
+  },
   "sulfur_cube_squish": {
     "subtitle": "subtitles.chaos_cubed.sulfur_cube_squish",
     "sounds": [

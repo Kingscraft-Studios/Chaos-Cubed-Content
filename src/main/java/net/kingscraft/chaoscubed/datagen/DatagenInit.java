@@ -1,12 +1,12 @@
 package net.kingscraft.chaoscubed.datagen;
 
-
-
 import net.fabricmc.fabric.api.datagen.v1.DataGeneratorEntrypoint;
 import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;
-import net.kingscraft.chaoscubed.worldgen.CCBiome;
-import net.kingscraft.chaoscubed.worldgen.CCConfiguredFeature;
-import net.kingscraft.chaoscubed.worldgen.CCPlacedFeature;
+import net.kingscraft.chaoscubed.worldgen.biome.CCBiome;
+import net.kingscraft.chaoscubed.worldgen.biome.CCConfiguredFeature;
+import net.kingscraft.chaoscubed.worldgen.biome.CCPlacedFeature;
+import net.kingscraft.chaoscubed.worldgen.structure.CCStructureSets;
+import net.kingscraft.chaoscubed.worldgen.structure.CCStructures;
 import net.minecraft.core.RegistrySetBuilder;
 import net.minecraft.core.registries.Registries;
 
@@ -26,5 +26,8 @@ public class DatagenInit implements DataGeneratorEntrypoint {
         registryBuilder.add(Registries.CONFIGURED_FEATURE, CCConfiguredFeature::configure);
         registryBuilder.add(Registries.PLACED_FEATURE, CCPlacedFeature::configure);
         registryBuilder.add(Registries.BIOME, CCBiome::configure);
+
+        registryBuilder.add(Registries.STRUCTURE, CCStructures::configure);
+        registryBuilder.add(Registries.STRUCTURE_SET, CCStructureSets::configure);
     }
 }

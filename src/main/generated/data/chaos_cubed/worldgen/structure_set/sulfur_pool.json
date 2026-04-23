@@ -1,0 +1,14 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 143576238,
+    "separation": 10,
+    "spacing": 15
+  },
+  "structures": [
+    {
+      "structure": "chaos_cubed:sulfur_pool",
+      "weight": 1
+    }
+  ]
+}

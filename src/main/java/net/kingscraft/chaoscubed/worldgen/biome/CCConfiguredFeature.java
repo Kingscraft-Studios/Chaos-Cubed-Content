@@ -1,5 +1,6 @@
-package net.kingscraft.chaoscubed.worldgen;
+package net.kingscraft.chaoscubed.worldgen.biome;
 
+import net.kingscraft.chaoscubed.worldgen.WorldGeneration;
 import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
