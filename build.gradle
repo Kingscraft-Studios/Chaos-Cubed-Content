@@ -9,10 +9,6 @@ base {
     archivesName = project.archives_base_name
 }
 
-loom {
-    accessWidenerPath = file("src/main/resources/chaos_cubed.classtweaker")
-}
-
 fabricApi {
     configureDataGeneration() {
         client = true
