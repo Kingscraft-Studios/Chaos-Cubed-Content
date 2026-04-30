@@ -54,5 +54,13 @@
       "chaos_cubed:sulfur_cube/hit/hit3",
       "chaos_cubed:sulfur_cube/hit/hit4"
     ]
+  },
+
+  "sulfur_cube_eject": {
+    "subtitle": "subtitles.chaos_cubed.sulfur_cube_eject",
+    "sounds": [
+      "chaos_cubed:sulfur_cube/eject/eject1",
+      "chaos_cubed:sulfur_cube/eject/eject2"
+    ]
   }
 }

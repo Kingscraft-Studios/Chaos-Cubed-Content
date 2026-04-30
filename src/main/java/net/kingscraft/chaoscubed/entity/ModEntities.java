@@ -10,7 +10,8 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 
-public class ModEntities {
+ public class
+ModEntities {
     public static final ResourceKey<EntityType<?>> SULFUR_CUBE_KEY =
             ResourceKey.create(Registries.ENTITY_TYPE,
                     Identifier.fromNamespaceAndPath(ChaosCubed.MODID, "sulfur_cube"));

@@ -13,6 +13,7 @@ public class ModSounds {
     public static final SoundEvent SULFUR_CUBE_SQUISH = registerSoundEvent("sulfur_cube_squish");
     public static final SoundEvent SULFUR_CUBE_HURT = registerSoundEvent("sulfur_cube_hit");
     public static final SoundEvent SULFUR_CUBE_ABSORB = registerSoundEvent("sulfur_cube_absorb");
+    public static final SoundEvent SULFUR_CUBE_EJECT = registerSoundEvent("sulfur_cube_eject");
 
     private static SoundEvent registerSoundEvent(String name) {
         Identifier id = Identifier.fromNamespaceAndPath(ChaosCubed.MODID, name);
