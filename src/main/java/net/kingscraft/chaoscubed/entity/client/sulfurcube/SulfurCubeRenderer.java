@@ -78,6 +78,7 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
             case Block b when b == Blocks.QUARTZ_BRICKS -> "textures/entity/sulfur_cube_quartz_bricks.png";
             case Block b when b == Blocks.CHISELED_QUARTZ_BLOCK -> "textures/entity/sulfur_cube_chiseled_quartz_block.png";
             case Block b when b == Blocks.QUARTZ_PILLAR -> "textures/entity/sulfur_cube_quartz_pillar.png";
+            case Block b when b == Blocks.SMOOTH_QUARTZ -> "textures/entity/sulfur_cube_smooth_quartz.png";
             case Block b when b == Blocks.COPPER_BLOCK -> "textures/entity/sulfur_cube_copper_block.png";
             case Block b when b == Blocks.IRON_BLOCK -> "textures/entity/sulfur_cube_iron_block.png";
             case Block b when b == Blocks.GOLD_BLOCK -> "textures/entity/sulfur_cube_gold_block.png";

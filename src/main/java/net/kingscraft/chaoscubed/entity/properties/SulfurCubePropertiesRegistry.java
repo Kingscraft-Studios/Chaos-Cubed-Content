@@ -30,6 +30,7 @@ public class SulfurCubePropertiesRegistry {
         register(Blocks.QUARTZ_BRICKS, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.CHISELED_QUARTZ_BLOCK, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.QUARTZ_PILLAR, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.SMOOTH_QUARTZ, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.COPPER_BLOCK, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.IRON_BLOCK, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.GOLD_BLOCK, CubeBlockProperties.SLOW_FLAT);
