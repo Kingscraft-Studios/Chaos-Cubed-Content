@@ -5,6 +5,7 @@ import net.kingscraft.chaoscubed.entity.properties.CubeBlockProperties;
 import net.kingscraft.chaoscubed.entity.properties.SulfurCubePropertiesRegistry;
 import net.kingscraft.chaoscubed.particles.ModParticles;
 import net.kingscraft.chaoscubed.sounds.ModSounds;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -41,7 +42,7 @@ import org.jspecify.annotations.Nullable;
 public class SulfurCubeEntity extends PathfinderMob {
     private static final EntityDataAccessor<BlockState> DATA_ABSORBED_BLOCK =
             SynchedEntityData.defineId(SulfurCubeEntity.class, EntityDataSerializers.BLOCK_STATE);
-    private static final double MIN_BOUNCE_IMPACT = 0.08D;
+    private static final double MIN_BOUNCE_IMPACT = 0.12D;
     private static final double MIN_BOUNCE_POWER = 0.28D;
     private static final double MAX_BOUNCE_POWER = 1.2D;
     private static final double STICKY_CONTACT_DISTANCE = 0.03D;
@@ -49,6 +50,7 @@ public class SulfurCubeEntity extends PathfinderMob {
     private static final double STICKY_SLIDE_HORIZONTAL = 0.995D;
     private static final double STICKY_WALL_VERTICAL = 0.99D;
     private int stickyDetachTicks;
+    private int surfaceBounceCooldown;
 
     public SulfurCubeEntity(EntityType<? extends PathfinderMob> type, Level world) {
         super(type, world);
@@ -136,14 +138,17 @@ public class SulfurCubeEntity extends PathfinderMob {
         // 2. SPRING PHYSICS (Visual Animation)
         this.squish += (this.targetSquish - this.squish) * 0.5F;
         this.targetSquish *= 0.6F;
+        if (this.surfaceBounceCooldown > 0) {
+            --this.surfaceBounceCooldown;
+        }
 
         if (this.hasAbsorbedBlock()) {
             CubeBlockProperties props = this.getCubeProperties();
-            if (this.onGround() && preStepVelocity.y < -MIN_BOUNCE_IMPACT) {
+            if (this.surfaceBounceCooldown == 0 && this.hasBounceImpact(preStepVelocity)) {
                 if (props.isSticky()) {
                     this.handleLandingSquish(preStepVelocity);
                 } else {
-                    this.handleLandingBounce(preStepVelocity, props);
+                    this.handleSurfaceBounce(preStepVelocity, props);
                 }
             }
 
@@ -160,7 +165,7 @@ public class SulfurCubeEntity extends PathfinderMob {
             }
         } else {
             this.setNoGravity(false);
-            if (this.onGround() && preStepVelocity.y < -MIN_BOUNCE_IMPACT) {
+            if (this.surfaceBounceCooldown == 0 && this.hasBounceImpact(preStepVelocity)) {
                 this.handleLandingSquish(preStepVelocity);
             } else if (!this.onGround()) {
                 this.targetSquish = -0.15F;
@@ -183,10 +188,6 @@ public class SulfurCubeEntity extends PathfinderMob {
         return CubeBlockProperties.REGULAR;
     }
 
-    public boolean isStickyArchetype() {
-        return this.getCubeProperties().isSticky();
-    }
-
     private void setAbsorbedBlockState(BlockState state) {
         this.entityData.set(DATA_ABSORBED_BLOCK, state);
     }
@@ -196,16 +197,26 @@ public class SulfurCubeEntity extends PathfinderMob {
         ItemStack stack = player.getItemInHand(hand);
 
         if (stack.getItem() instanceof BlockItem blockItem) {
-            BlockState state = blockItem.getBlock().defaultBlockState();
-            if (!state.isAir()) {
+            BlockState newState = blockItem.getBlock().defaultBlockState();
+
+            if (!newState.isAir()) {
                 if (!this.level().isClientSide()) {
-                    this.setAbsorbedBlockState(state);
+                    // --- EJECT PREVIOUS BLOCK IF IT EXISTS ---
+                    BlockState currentStored = this.getAbsorbedBlockState();
+                    if (currentStored != null && !currentStored.isAir()) {
+                        if (this.level() instanceof ServerLevel serverLevel) {
+                            this.spawnAtLocation(serverLevel, new ItemStack(currentStored.getBlock()));
+                        }
+                    }
+
+                    // --- ABSORB NEW BLOCK ---
+                    this.setAbsorbedBlockState(newState);
                     this.playSound(ModSounds.SULFUR_CUBE_ABSORB, 1.0F, 0.95F + this.random.nextFloat() * 0.1F);
+
                     if (!player.getAbilities().instabuild) {
                         stack.shrink(1);
                     }
                 }
-
                 return InteractionResult.SUCCESS;
             }
         }
@@ -215,7 +226,6 @@ public class SulfurCubeEntity extends PathfinderMob {
                 BlockState stored = this.getAbsorbedBlockState();
 
                 if (stored != null && !stored.isAir()) {
-
                     // Drop block
                     this.spawnAtLocation(serverLevel, new ItemStack(stored.getBlock()));
 
@@ -226,38 +236,125 @@ public class SulfurCubeEntity extends PathfinderMob {
                     stack.hurtAndBreak(1, player, hand);
 
                     this.playSound(ModSounds.SULFUR_CUBE_EJECT, 1.0F, 1.2F);
+                    return InteractionResult.SUCCESS; // Move return inside so we consume the click
                 } else {
-                    return InteractionResult.PASS; // don’t waste durability
+                    return InteractionResult.PASS; // No block to shear, don't play animation
                 }
             }
-
             return InteractionResult.SUCCESS;
         }
 
         return super.mobInteract(player, hand);
     }
 
-    private void handleLandingBounce(Vec3 impactVelocity, CubeBlockProperties props) {
-        double impact = -impactVelocity.y;
-        double retention = Mth.clamp(0.55D + props.bounceMod() * 0.14D, 0.35D, 0.9D);
-        double bouncePower = Mth.clamp(impact * retention, 0.0D, MAX_BOUNCE_POWER);
+    private boolean hasBounceImpact(Vec3 impactVelocity) {
+        return (this.onGround() && impactVelocity.y < -MIN_BOUNCE_IMPACT)
+                || (this.verticalCollision && impactVelocity.y > MIN_BOUNCE_IMPACT)
+                || (this.horizontalCollision && this.getHorizontalSpeed(impactVelocity) > MIN_BOUNCE_IMPACT);
+    }
 
-        this.handleLandingSquish(impactVelocity);
+    private double getHorizontalSpeed(Vec3 velocity) {
+        return Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+    }
 
-        if (bouncePower <= MIN_BOUNCE_POWER) {
-            this.setDeltaMovement(
-                    this.settleAxis(impactVelocity.x),
-                    0.0D,
-                    this.settleAxis(impactVelocity.z)
-            );
+    private void handleSurfaceBounce(Vec3 impactVelocity, CubeBlockProperties props) {
+        double impactY = Math.abs(impactVelocity.y);
+        double impactHorizontal = this.getHorizontalSpeed(impactVelocity);
+
+        // Use your existing sticky surface detection
+        boolean hitWallX = this.isTouchingStickySurface(STICKY_CONTACT_DISTANCE, 0.0D, 0.0D)
+                || this.isTouchingStickySurface(-STICKY_CONTACT_DISTANCE, 0.0D, 0.0D);
+        boolean hitWallZ = this.isTouchingStickySurface(0.0D, 0.0D, STICKY_CONTACT_DISTANCE)
+                || this.isTouchingStickySurface(0.0D, 0.0D, -STICKY_CONTACT_DISTANCE);
+
+        // Keep your existing retention calculation
+        double retention = Mth.clamp(
+                0.55D + props.bounceMod() * 0.14D,
+                0.35D,
+                0.95D // Slightly increased cap for more "chaos"
+        );
+
+        // --- 1. FLOOR BOUNCE (Kept your logic, adds vertical reflection) ---
+        if (this.onGround() || (this.verticalCollision && impactVelocity.y < 0.0D)) {
+            double bouncePower = Mth.clamp(impactY * retention, 0.0D, MAX_BOUNCE_POWER);
+
+            // Allow floor to settle so it doesn't vibrate forever on the ground
+            if (bouncePower <= MIN_BOUNCE_POWER) {
+                this.setDeltaMovement(
+                        this.settleAxis(impactVelocity.x),
+                        0.0D,
+                        this.settleAxis(impactVelocity.z)
+                );
+                return;
+            }
+
+            this.handleLandingSquish(impactVelocity);
+
+            // existing Chaos Spread logic
+            double spread = Mth.clamp(impactY * 0.35D, 0.05D, 0.6D);
+            double angle = this.random.nextDouble() * Math.PI * 2D;
+            double impulseX = Math.cos(angle) * spread;
+            double impulseZ = Math.sin(angle) * spread;
+
+            double newX = (impactVelocity.x * 0.6D) + impulseX;
+            double newZ = (impactVelocity.z * 0.6D) + impulseZ;
+
+            if (impactY > 0.45D) {
+                newX *= 1.15D;
+                newZ *= 1.15D;
+            }
+
+            this.setDeltaMovement(newX, bouncePower, newZ);
+            this.surfaceBounceCooldown = 2;
             return;
         }
 
-        double horizontalCarry = Mth.clamp((1.0D / props.dragMod()) + 0.08D, 0.85D, 1.08D);
+        // --- 2. CEILING BOUNCE (FIXED: Removed settle check) ---
+        if (this.verticalCollision && impactVelocity.y > 0.0D) {
+            // Force a minimum bounce down so it never "sticks"
+            double bouncePower = Math.max(0.12D, impactY * retention);
+            bouncePower = Math.min(bouncePower, MAX_BOUNCE_POWER);
+
+            this.handleLandingSquish(impactVelocity);
+
+            this.setDeltaMovement(
+                    impactVelocity.x * retention,
+                    -bouncePower, // Explicitly push DOWN
+                    impactVelocity.z * retention
+            );
+            this.surfaceBounceCooldown = 2;
+            return;
+        }
+
+        // --- 3. WALL BOUNCE (FIXED: Logic combined to prevent early returns) ---
+        if (hitWallX || hitWallZ) {
+            this.handleLandingSquish(impactVelocity);
+
+            double bouncedX = hitWallX ? -impactVelocity.x * retention : impactVelocity.x * retention;
+            double bouncedZ = hitWallZ ? -impactVelocity.z * retention : impactVelocity.z * retention;
+
+            // Ensure a minimum "pop" off the wall so it doesn't glide/stick
+            if (hitWallX && Math.abs(bouncedX) < 0.08D) {
+                bouncedX = impactVelocity.x > 0 ? -0.1D : 0.1D;
+            }
+            if (hitWallZ && Math.abs(bouncedZ) < 0.08D) {
+                bouncedZ = impactVelocity.z > 0 ? -0.1D : 0.1D;
+            }
+
+            this.setDeltaMovement(
+                    bouncedX,
+                    this.settleAxis(impactVelocity.y), // Keep vertical momentum if falling/rising
+                    bouncedZ
+            );
+            this.surfaceBounceCooldown = 2;
+            return;
+        }
+
+        // --- 4. FALLBACK ---
         this.setDeltaMovement(
-                impactVelocity.x * horizontalCarry,
-                bouncePower,
-                impactVelocity.z * horizontalCarry
+                this.settleAxis(impactVelocity.x),
+                this.settleAxis(impactVelocity.y),
+                this.settleAxis(impactVelocity.z)
         );
     }
 
@@ -277,6 +374,7 @@ public class SulfurCubeEntity extends PathfinderMob {
                 || this.isTouchingStickySurface(0.0D, 0.0D, -STICKY_CONTACT_DISTANCE);
 
         boolean attached = this.onGround() || touchingWall || touchingCeiling;
+
         if (attached) {
             this.stickyDetachTicks = 0;
         } else if (++this.stickyDetachTicks > 20) {
@@ -284,16 +382,26 @@ public class SulfurCubeEntity extends PathfinderMob {
             return;
         }
 
-        if (!attached) {
-            return;
-        }
+        if (!attached) return;
 
         this.fallDistance = 0.0F;
-        Vec3 velocity = this.getDeltaMovement();
-        double contactDamping = props.dragMod() < 0.6F ? STICKY_SLIDE_HORIZONTAL : Mth.clamp(0.98D / props.dragMod(), 0.85D, 1.0D);
-        double x = velocity.x * contactDamping;
-        double y = velocity.y;
-        double z = velocity.z * contactDamping;
+
+        Vec3 v = this.getDeltaMovement();
+
+        // SINGLE DRAG SOURCE (sticky uses ground-style drag but stronger)
+        double baseDrag = props.getDrag(true);
+
+        double contactDamping;
+
+        if (baseDrag < 0.6D) {
+            contactDamping = STICKY_SLIDE_HORIZONTAL;
+        } else {
+            contactDamping = Mth.clamp(0.98D / baseDrag, 0.85D, 1.0D);
+        }
+
+        double x = v.x * contactDamping;
+        double y = v.y;
+        double z = v.z * contactDamping;
 
         if (this.onGround()) {
             y = 0.0D;
@@ -311,7 +419,11 @@ public class SulfurCubeEntity extends PathfinderMob {
             y = 0.0D;
         }
 
-        this.setDeltaMovement(this.settleAxis(x), this.settleAxis(y), this.settleAxis(z));
+        this.setDeltaMovement(
+                this.settleAxis(x),
+                this.settleAxis(y),
+                this.settleAxis(z)
+        );
     }
 
     private double settleAxis(double value) {
@@ -356,25 +468,18 @@ public class SulfurCubeEntity extends PathfinderMob {
     public void tick() {
         super.tick();
 
-        if (this.hasAbsorbedBlock()) {
-            CubeBlockProperties props = this.getCubeProperties();
+        if (!this.hasAbsorbedBlock()) return;
 
-            // 1. BUOYANCY: If the archetype doesn't float, apply extra downward force in liquids
-            if (!props.isBuoyant() && (this.isInWater() || this.isInLava())) {
-                Vec3 velocity = this.getDeltaMovement();
-                // Sinking force: helps it drop to the bottom like the Heavy archetype
-                this.setDeltaMovement(velocity.x, velocity.y - 0.05D, velocity.z);
-            }
+        CubeBlockProperties props = this.getCubeProperties();
 
-            // 2. DRAG / FRICTION
-            // Standard Minecraft air/ground friction is ~0.98.
-            // We use dragMod to increase or decrease this resistance.
-            if (!props.isSticky() && props.dragMod() != 1.0f) {
-                Vec3 vel = this.getDeltaMovement();
-                double horizontalDrag = Mth.clamp(0.98D / props.dragMod(), 0.65D, 1.02D);
-                this.setDeltaMovement(vel.x * horizontalDrag, vel.y, vel.z * horizontalDrag);
-            }
+        // 1. BUOYANCY (only here, safe to keep)
+        if (!props.isBuoyant() && (this.isInWater() || this.isInLava())) {
+            Vec3 v = this.getDeltaMovement();
+            this.setDeltaMovement(v.x, v.y - 0.05D, v.z);
         }
+
+        // NO DRAG HERE ANYMORE
+        // All drag is handled by bounce + sticky systems
     }
 
     @Override
@@ -452,5 +557,16 @@ public class SulfurCubeEntity extends PathfinderMob {
             return false;
         }
         return super.hurtServer(level, damageSource, amount);
+    }
+
+    @Override
+    public boolean causeFallDamage(double d, float f, DamageSource damageSource) {
+        return false;
+    }
+
+    @Override
+    protected void checkFallDamage(double d, boolean bl, BlockState blockState, BlockPos blockPos) {
+        // By leaving this entirely empty, we stop the "landing" check.
+        // This kills the default block-dust particles and the landing sounds.
     }
 }

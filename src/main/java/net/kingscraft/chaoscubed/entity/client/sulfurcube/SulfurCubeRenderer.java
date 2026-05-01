@@ -58,65 +58,68 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
 
     public Identifier getTextureForBlock(Block block) {
         String texturePath = switch (block) {
+
+            // "//" if this is present at the end of a line it means its texture is present
+
             // --- REGULAR ---
-            case Block b when b == Blocks.DIRT -> "textures/entity/sulfur_cube_dirt.png";
-            case Block b when b == Blocks.STONE -> "textures/entity/sulfur_cube_stone.png";
-            case Block b when b == Blocks.COBBLESTONE -> "textures/entity/sulfur_cube_cobblestone.png";
-            case Block b when b == Blocks.MOSSY_COBBLESTONE -> "textures/entity/sulfur_cube_mossy_cobblestone.png";
-            case Block b when b == Blocks.SMOOTH_STONE -> "textures/entity/sulfur_cube_smooth_stone.png";
-            case Block b when b == Blocks.STONE_BRICKS -> "textures/entity/sulfur_cube_stone_bricks.png";
-            case Block b when b == Blocks.CHISELED_STONE_BRICKS -> "textures/entity/sulfur_cube_chiseled_stone_bricks.png";
-            case Block b when b == Blocks.CRACKED_STONE_BRICKS -> "textures/entity/sulfur_cube_cracked_stone_bricks.png";
-            case Block b when b == Blocks.MOSSY_STONE_BRICKS -> "textures/entity/sulfur_cube_mossy_stone_bricks.png";
+            case Block b when b == Blocks.DIRT -> "textures/entity/sulfur_cube_dirt.png"; //
+            case Block b when b == Blocks.STONE -> "textures/entity/sulfur_cube_stone.png"; //
+            case Block b when b == Blocks.COBBLESTONE -> "textures/entity/sulfur_cube_cobblestone.png"; //
+            case Block b when b == Blocks.MOSSY_COBBLESTONE -> "textures/entity/sulfur_cube_mossy_cobblestone.png"; //
+            case Block b when b == Blocks.SMOOTH_STONE -> "textures/entity/sulfur_cube_smooth_stone.png"; //
+            case Block b when b == Blocks.STONE_BRICKS -> "textures/entity/sulfur_cube_stone_bricks.png"; //
+            case Block b when b == Blocks.CHISELED_STONE_BRICKS -> "textures/entity/sulfur_cube_chiseled_stone_bricks.png"; //
+            case Block b when b == Blocks.CRACKED_STONE_BRICKS -> "textures/entity/sulfur_cube_cracked_stone_bricks.png"; //
+            case Block b when b == Blocks.MOSSY_STONE_BRICKS -> "textures/entity/sulfur_cube_mossy_stone_bricks.png"; //
 
             // --- STICKY ---
-            case Block b when b == Blocks.HONEY_BLOCK -> "textures/entity/sulfur_cube_honey_block.png";
-            case Block b when b == Blocks.HONEYCOMB_BLOCK -> "textures/entity/sulfur_cube_honeycomb_block.png";
+            case Block b when b == Blocks.HONEY_BLOCK -> "textures/entity/sulfur_cube_honey_block.png"; //
+            case Block b when b == Blocks.HONEYCOMB_BLOCK -> "textures/entity/sulfur_cube_honeycomb_block.png"; //
 
             // --- HEAVY (SLOW_FLAT) ---
-            case Block b when b == Blocks.QUARTZ_BLOCK -> "textures/entity/sulfur_cube_quartz_block.png";
-            case Block b when b == Blocks.QUARTZ_BRICKS -> "textures/entity/sulfur_cube_quartz_bricks.png";
-            case Block b when b == Blocks.CHISELED_QUARTZ_BLOCK -> "textures/entity/sulfur_cube_chiseled_quartz_block.png";
-            case Block b when b == Blocks.QUARTZ_PILLAR -> "textures/entity/sulfur_cube_quartz_pillar.png";
-            case Block b when b == Blocks.SMOOTH_QUARTZ -> "textures/entity/sulfur_cube_smooth_quartz.png";
-            case Block b when b == Blocks.COPPER_BLOCK -> "textures/entity/sulfur_cube_copper_block.png";
-            case Block b when b == Blocks.IRON_BLOCK -> "textures/entity/sulfur_cube_iron_block.png";
-            case Block b when b == Blocks.GOLD_BLOCK -> "textures/entity/sulfur_cube_gold_block.png";
-            case Block b when b == Blocks.AMETHYST_BLOCK -> "textures/entity/sulfur_cube_amethyst_block.png";
-            case Block b when b == Blocks.COAL_BLOCK -> "textures/entity/sulfur_cube_coal_block.png";
-            case Block b when b == Blocks.DIAMOND_BLOCK -> "textures/entity/sulfur_cube_diamond_block.png";
-            case Block b when b == Blocks.EMERALD_BLOCK -> "textures/entity/sulfur_cube_emerald_block.png";
-            case Block b when b == Blocks.LAPIS_BLOCK -> "textures/entity/sulfur_cube_lapis_block.png";
-            case Block b when b == Blocks.NETHERITE_BLOCK -> "textures/entity/sulfur_cube_netherite_block.png";
-            case Block b when b == Blocks.REDSTONE_BLOCK -> "textures/entity/sulfur_cube_redstone_block.png";
+            case Block b when b == Blocks.QUARTZ_BLOCK -> "textures/entity/sulfur_cube_quartz_block.png"; //
+            case Block b when b == Blocks.QUARTZ_BRICKS -> "textures/entity/sulfur_cube_quartz_bricks.png"; //
+            case Block b when b == Blocks.CHISELED_QUARTZ_BLOCK -> "textures/entity/sulfur_cube_chiseled_quartz_block.png"; //
+            case Block b when b == Blocks.QUARTZ_PILLAR -> "textures/entity/sulfur_cube_quartz_pillar.png"; //
+            case Block b when b == Blocks.SMOOTH_QUARTZ -> "textures/entity/sulfur_cube_smooth_quartz.png"; //
+            case Block b when b == Blocks.COPPER_BLOCK -> "textures/entity/sulfur_cube_copper_block.png"; //
+            case Block b when b == Blocks.IRON_BLOCK -> "textures/entity/sulfur_cube_iron_block.png"; //
+            case Block b when b == Blocks.GOLD_BLOCK -> "textures/entity/sulfur_cube_gold_block.png"; //
+            case Block b when b == Blocks.AMETHYST_BLOCK -> "textures/entity/sulfur_cube_amethyst_block.png"; //
+            case Block b when b == Blocks.COAL_BLOCK -> "textures/entity/sulfur_cube_coal_block.png"; //
+            case Block b when b == Blocks.DIAMOND_BLOCK -> "textures/entity/sulfur_cube_diamond_block.png"; //
+            case Block b when b == Blocks.EMERALD_BLOCK -> "textures/entity/sulfur_cube_emerald_block.png"; //
+            case Block b when b == Blocks.LAPIS_BLOCK -> "textures/entity/sulfur_cube_lapis_block.png"; //
+            case Block b when b == Blocks.NETHERITE_BLOCK -> "textures/entity/sulfur_cube_netherite_block.png"; //
+            case Block b when b == Blocks.REDSTONE_BLOCK -> "textures/entity/sulfur_cube_redstone_block.png"; //
 
             // --- LIGHT (WOODS) ---
             // Oak
-            case Block b when b == Blocks.OAK_LOG -> "textures/entity/sulfur_cube_oak_log.png";
+            case Block b when b == Blocks.OAK_LOG -> "textures/entity/sulfur_cube_oak_log.png"; //
             case Block b when b == Blocks.STRIPPED_OAK_LOG -> "textures/entity/sulfur_cube_stripped_oak_log.png";
             case Block b when b == Blocks.OAK_WOOD -> "textures/entity/sulfur_cube_oak_wood.png";
             case Block b when b == Blocks.STRIPPED_OAK_WOOD -> "textures/entity/sulfur_cube_stripped_oak_wood.png";
             case Block b when b == Blocks.OAK_PLANKS -> "textures/entity/sulfur_cube_oak_planks.png";
             // Spruce
-            case Block b when b == Blocks.SPRUCE_LOG -> "textures/entity/sulfur_cube_spruce_log.png";
+            case Block b when b == Blocks.SPRUCE_LOG -> "textures/entity/sulfur_cube_spruce_log.png"; //
             case Block b when b == Blocks.STRIPPED_SPRUCE_LOG -> "textures/entity/sulfur_cube_stripped_spruce_log.png";
             case Block b when b == Blocks.SPRUCE_WOOD -> "textures/entity/sulfur_cube_spruce_wood.png";
             case Block b when b == Blocks.STRIPPED_SPRUCE_WOOD -> "textures/entity/sulfur_cube_stripped_spruce_wood.png";
             case Block b when b == Blocks.SPRUCE_PLANKS -> "textures/entity/sulfur_cube_spruce_planks.png";
             // Birch
-            case Block b when b == Blocks.BIRCH_LOG -> "textures/entity/sulfur_cube_birch_log.png";
+            case Block b when b == Blocks.BIRCH_LOG -> "textures/entity/sulfur_cube_birch_log.png"; //
             case Block b when b == Blocks.STRIPPED_BIRCH_LOG -> "textures/entity/sulfur_cube_stripped_birch_log.png";
             case Block b when b == Blocks.BIRCH_WOOD -> "textures/entity/sulfur_cube_birch_wood.png";
             case Block b when b == Blocks.STRIPPED_BIRCH_WOOD -> "textures/entity/sulfur_cube_stripped_birch_wood.png";
             case Block b when b == Blocks.BIRCH_PLANKS -> "textures/entity/sulfur_cube_birch_planks.png";
             // Jungle
-            case Block b when b == Blocks.JUNGLE_LOG -> "textures/entity/sulfur_cube_jungle_log.png";
+            case Block b when b == Blocks.JUNGLE_LOG -> "textures/entity/sulfur_cube_jungle_log.png"; //
             case Block b when b == Blocks.STRIPPED_JUNGLE_LOG -> "textures/entity/sulfur_cube_stripped_jungle_log.png";
             case Block b when b == Blocks.JUNGLE_WOOD -> "textures/entity/sulfur_cube_jungle_wood.png";
             case Block b when b == Blocks.STRIPPED_JUNGLE_WOOD -> "textures/entity/sulfur_cube_stripped_jungle_wood.png";
             case Block b when b == Blocks.JUNGLE_PLANKS -> "textures/entity/sulfur_cube_jungle_planks.png";
             // Acacia
-            case Block b when b == Blocks.ACACIA_LOG -> "textures/entity/sulfur_cube_acacia_log.png";
+            case Block b when b == Blocks.ACACIA_LOG -> "textures/entity/sulfur_cube_acacia_log.png"; //
             case Block b when b == Blocks.STRIPPED_ACACIA_LOG -> "textures/entity/sulfur_cube_stripped_acacia_log.png";
             case Block b when b == Blocks.ACACIA_WOOD -> "textures/entity/sulfur_cube_acacia_wood.png";
             case Block b when b == Blocks.STRIPPED_ACACIA_WOOD -> "textures/entity/sulfur_cube_stripped_acacia_wood.png";
@@ -180,7 +183,7 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
             case Block b when b == Blocks.MAGENTA_WOOL -> "textures/entity/sulfur_cube_magenta_wool.png";
             case Block b when b == Blocks.PINK_WOOL -> "textures/entity/sulfur_cube_pink_wool.png";
 
-            default -> "textures/entity/sulfur_cube_default.png";
+            default -> "textures/entity/sulfur_cube.png";
         };
 
         return Identifier.fromNamespaceAndPath(ChaosCubed.MODID, texturePath);
