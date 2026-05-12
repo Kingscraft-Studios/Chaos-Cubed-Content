@@ -13,7 +13,8 @@ public record CubeBlockProperties(
         REGULAR,
         SLOW_FLAT,
         LIGHT,
-        STICKY
+        STICKY,
+        TNT
     }
 
     public CubeBlockProperties(float speedMod, float bounceMod, float airDrag, float groundDrag, boolean isBuoyant) {
@@ -44,4 +45,7 @@ public record CubeBlockProperties(
 
     public static final CubeBlockProperties STICKY =
             new CubeBlockProperties(0.0f, 0.0f, 0.90f, 0.70f, 1.35f, false, Archetype.STICKY);
+
+    public static final CubeBlockProperties EXPLOSIVE =
+            new CubeBlockProperties(-1.0f,0.5f,0.3f, 0.3f, 0.33f, true, Archetype.TNT );
 }

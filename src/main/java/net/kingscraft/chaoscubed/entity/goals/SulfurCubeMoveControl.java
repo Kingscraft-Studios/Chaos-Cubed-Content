@@ -20,32 +20,55 @@ public class SulfurCubeMoveControl extends MoveControl {
 
     @Override
     public void tick() {
+
+        // BLOCK AI MOVEMENT WHEN CUBE HAS BLOCK
+        // BUT DO NOT BLOCK LEASH PHYSICS
+        if (this.cube.hasAbsorbedBlock()) {
+
+            // If NOT leashed → fully freeze AI movement
+            if (!this.cube.isLeashed()) {
+                this.mob.setZza(0.0F);
+                this.mob.setXxa(0.0F);
+                this.mob.setSpeed(0.0F);
+                return;
+            }
+
+            // If leashed → DO NOTHING here
+            // let vanilla leash system control movement
+            return;
+        }
+
+        // ================= NORMAL AI =================
+
         this.mob.setYRot(this.rotlerp(this.mob.getYRot(), this.yRot, 90.0F));
         this.mob.yHeadRot = this.mob.getYRot();
         this.mob.yBodyRot = this.mob.getYRot();
 
-        // Operation check
         if (this.operation != MoveControl.Operation.MOVE_TO) {
             this.mob.setZza(0.0F);
-        } else {
-            this.operation = MoveControl.Operation.WAIT;
-            if (this.mob.onGround()) {
-                float currentSpeed = (float) this.speedModifier * this.cube.getSpeed();
-                this.mob.setSpeed(currentSpeed);
+            return;
+        }
 
-                if (this.jumpDelay-- <= 0) {
-                    this.jumpDelay = 10 + this.cube.getRandom().nextInt(20);
-                    this.cube.zza = 1.0F;
-                    this.cube.getJumpControl().jump();
-                } else {
-                    this.cube.xxa = 0.0F;
-                    this.cube.zza = 0.0F;
-                    this.mob.setSpeed(0.0F);
-                }
-            } else {
-                this.mob.setSpeed((float) this.speedModifier * this.cube.getSpeed());
+        this.operation = MoveControl.Operation.WAIT;
+
+        if (this.mob.onGround()) {
+
+            float currentSpeed = (float) this.speedModifier * this.cube.getSpeed();
+            this.mob.setSpeed(currentSpeed);
+
+            if (this.jumpDelay-- <= 0) {
+                this.jumpDelay = 10 + this.cube.getRandom().nextInt(20);
                 this.cube.zza = 1.0F;
+                this.cube.getJumpControl().jump();
+            } else {
+                this.cube.xxa = 0.0F;
+                this.cube.zza = 0.0F;
+                this.mob.setSpeed(0.0F);
             }
+
+        } else {
+            this.mob.setSpeed((float) this.speedModifier * this.cube.getSpeed());
+            this.cube.zza = 1.0F;
         }
     }
 }

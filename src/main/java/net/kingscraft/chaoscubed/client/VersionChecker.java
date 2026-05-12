@@ -4,7 +4,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.fabricmc.loader.api.FabricLoader;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 
@@ -21,8 +21,10 @@ public class VersionChecker {
     // Run this ONCE in onInitializeClient
     public static void init() {
         CompletableFuture.runAsync(() -> {
-            try (InputStream in = new URL(VERSION_URL).openStream();
-                 Scanner s = new Scanner(in).useDelimiter("\\A")) {
+            URI uri = URI.create(VERSION_URL);
+
+            try (InputStream in = uri.toURL().openStream();
+                 Scanner s = new Scanner(in).useDelimiter("\\A"))  {
                 String result = s.hasNext() ? s.next() : "";
                 if (result.contains("\"latest\":")) {
                     latestVersion = result.split("\"latest\":")[1].split("\"")[1];

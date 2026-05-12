@@ -12,15 +12,11 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.tags.DamageTypeTags;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -29,6 +25,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShearsItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.ValueInput;
@@ -51,6 +48,14 @@ public class SulfurCubeEntity extends PathfinderMob {
     private static final double STICKY_WALL_VERTICAL = 0.99D;
     private int stickyDetachTicks;
     private int surfaceBounceCooldown;
+    private boolean ignited = false;
+    private boolean explosivePrimed = false;
+    private int fuseTime = -1;
+    private static final EntityDataAccessor<Boolean> DATA_IGNITED =
+            SynchedEntityData.defineId(SulfurCubeEntity.class, EntityDataSerializers.BOOLEAN);
+    private boolean pendingExplosionIgnite;
+    private int explosionDelay;
+    private float pendingExplosionPower;
 
     public SulfurCubeEntity(EntityType<? extends PathfinderMob> type, Level world) {
         super(type, world);
@@ -77,6 +82,7 @@ public class SulfurCubeEntity extends PathfinderMob {
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_ABSORBED_BLOCK, Blocks.AIR.defaultBlockState());
+        builder.define(DATA_IGNITED, false);
     }
 
     @Override
@@ -128,48 +134,84 @@ public class SulfurCubeEntity extends PathfinderMob {
 
     @Override
     public void aiStep() {
-        // 1. Capture the velocity BEFORE super.aiStep() potentially clears it on ground impact
         Vec3 preStepVelocity = this.getDeltaMovement();
 
         super.aiStep();
 
+        updateAnimation();
+        updatePhysics(preStepVelocity);
+        updateState();
+    }
+
+    private void updateAnimation() {
         this.prevSquish = this.squish;
 
-        // 2. SPRING PHYSICS (Visual Animation)
         this.squish += (this.targetSquish - this.squish) * 0.5F;
         this.targetSquish *= 0.6F;
+
         if (this.surfaceBounceCooldown > 0) {
             --this.surfaceBounceCooldown;
         }
+    }
 
-        if (this.hasAbsorbedBlock()) {
-            CubeBlockProperties props = this.getCubeProperties();
-            if (this.surfaceBounceCooldown == 0 && this.hasBounceImpact(preStepVelocity)) {
-                if (props.isSticky()) {
-                    this.handleLandingSquish(preStepVelocity);
-                } else {
-                    this.handleSurfaceBounce(preStepVelocity, props);
-                }
-            }
-
-            if (props.isSticky()) {
-                this.setNoGravity(true);
-                this.applyStickyMovement(props);
-            } else {
-                this.setNoGravity(false);
-            }
-
-            // 4. JUMP STRETCH (Visual cue only)
-            if (!this.onGround() && !props.isSticky()) {
-                this.targetSquish = -0.15F;
-            }
-        } else {
+    private void updatePhysics(Vec3 preStepVelocity) {
+        if (!this.hasAbsorbedBlock()) {
             this.setNoGravity(false);
+
             if (this.surfaceBounceCooldown == 0 && this.hasBounceImpact(preStepVelocity)) {
                 this.handleLandingSquish(preStepVelocity);
-            } else if (!this.onGround()) {
+            }
+
+            if (!this.onGround()) {
                 this.targetSquish = -0.15F;
             }
+            return;
+        }
+
+        CubeBlockProperties props = this.getCubeProperties();
+
+        // Sticky overrides bounce completely
+        if (props.isSticky()) {
+            this.setNoGravity(true);
+            this.applyStickyMovement(props);
+            return;
+        }
+
+        this.setNoGravity(false);
+
+        if (this.surfaceBounceCooldown == 0 && this.hasBounceImpact(preStepVelocity)) {
+            this.handleSurfaceBounce(preStepVelocity, props);
+        }
+
+        if (!this.onGround()) {
+            this.targetSquish = -0.15F;
+        }
+    }
+
+    private void updateState() {
+        if (this.isOnFire() || this.isInLava()) {
+            this.ignite(false);
+        }
+
+        if (this.level().hasNeighborSignal(this.blockPosition())) {
+            this.ignite(false);
+        }
+
+        if (this.ignited) {
+            this.fuseTime--;
+
+            if (this.fuseTime <= 0) {
+                this.explode();
+            }
+        }
+
+        if (!this.hasAbsorbedBlock()) return;
+
+        CubeBlockProperties props = this.getCubeProperties();
+
+        if (!props.isBuoyant() && (this.isInWater() || this.isInLava())) {
+            Vec3 v = this.getDeltaMovement();
+            this.setDeltaMovement(v.x, v.y - 0.05D, v.z);
         }
     }
 
@@ -195,6 +237,15 @@ public class SulfurCubeEntity extends PathfinderMob {
     @Override
     protected InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+
+        if (this.ignited) {
+            return InteractionResult.PASS;
+        }
+
+        if (stack.is(Items.FLINT_AND_STEEL) || stack.is(Items.FIRE_CHARGE)) {
+            this.ignite(false);
+            return InteractionResult.SUCCESS;
+        }
 
         if (stack.getItem() instanceof BlockItem blockItem) {
             BlockState newState = blockItem.getBlock().defaultBlockState();
@@ -361,7 +412,7 @@ public class SulfurCubeEntity extends PathfinderMob {
     private void handleLandingSquish(Vec3 impactVelocity) {
         double impact = -impactVelocity.y;
         this.targetSquish = (float) Math.min(1.0D, impact * 1.6D);
-        this.spawnSqualParticles();
+        if (!this.hasAbsorbedBlock()) { this.spawnSqualParticles(); }
         this.playLandingSound(impact);
     }
 
@@ -468,18 +519,84 @@ public class SulfurCubeEntity extends PathfinderMob {
     public void tick() {
         super.tick();
 
-        if (!this.hasAbsorbedBlock()) return;
+        // ================= CLIENT =================
+        if (this.level().isClientSide()) {
 
-        CubeBlockProperties props = this.getCubeProperties();
+            if (this.entityData.get(DATA_IGNITED)) {
 
-        // 1. BUOYANCY (only here, safe to keep)
-        if (!props.isBuoyant() && (this.isInWater() || this.isInLava())) {
-            Vec3 v = this.getDeltaMovement();
-            this.setDeltaMovement(v.x, v.y - 0.05D, v.z);
+                if (this.random.nextFloat() < 0.3F) {
+                    double x = this.getX() + (this.random.nextDouble() - 0.5D) * 0.6D;
+                    double y = this.getY() + 0.5D;
+                    double z = this.getZ() + (this.random.nextDouble() - 0.5D) * 0.6D;
+
+                    this.level().addParticle(
+                            net.minecraft.core.particles.ParticleTypes.SMOKE,
+                            x, y, z,
+                            0.0D, 0.02D, 0.0D
+                    );
+
+                    this.level().addParticle(
+                            net.minecraft.core.particles.ParticleTypes.FLAME,
+                            x, y, z,
+                            0.0D, 0.01D, 0.0D
+                    );
+                }
+
+                this.targetSquish += (0.15F - this.targetSquish) * 0.1F;
+            }
+
+            return;
         }
 
-        // NO DRAG HERE ANYMORE
-        // All drag is handled by bounce + sticky systems
+        // ================= SERVER =================
+
+        //  ignition sources
+        if (!this.ignited) {
+            if (this.isOnFire()
+                    || this.isInLava()
+                    || this.level().hasNeighborSignal(this.blockPosition())) {
+                this.ignite(false);
+            }
+        }
+
+        // 💣 fuse countdown
+        if (this.ignited) {
+            if (--this.fuseTime <= 0) {
+                this.explode();
+            }
+        }
+
+        // ================= EXPLOSION REACTION =================
+        if (this.explosionDelay > 0) {
+            if (--this.explosionDelay == 0) {
+
+                if (!this.ignited) {
+
+                    // optional: only ignite if explosion is strong enough
+                    if (this.pendingExplosionPower > 0.1F) {
+                        this.ignite(true);
+                    }
+                }
+
+                this.pendingExplosionIgnite = false;
+            }
+        }
+
+        // ================= WATER / LAVA DRAG =================
+        if (this.hasAbsorbedBlock()) {
+            CubeBlockProperties props = this.getCubeProperties();
+
+            if (!props.isBuoyant() && (this.isInWater() || this.isInLava())) {
+                Vec3 v = this.getDeltaMovement();
+                this.setDeltaMovement(v.x, v.y - 0.05D, v.z);
+            }
+        }
+    }
+
+    public void onExplosionNearby(float power, double x, double y, double z) {
+        this.pendingExplosionIgnite = true;
+        this.explosionDelay = 1;
+        this.pendingExplosionPower = power;
     }
 
     @Override
@@ -530,33 +647,63 @@ public class SulfurCubeEntity extends PathfinderMob {
 
     @Override
     public boolean hurtServer(ServerLevel level, DamageSource damageSource, float amount) {
-        if (this.hasAbsorbedBlock()) {
-            CubeBlockProperties props = this.getCubeProperties();
-            boolean bypassProtection = damageSource.is(DamageTypes.FELL_OUT_OF_WORLD)
-                    || damageSource.is(DamageTypes.GENERIC_KILL);
 
-            if (bypassProtection) {
-                return super.hurtServer(level, damageSource, amount);
-            }
+        if (!this.hasAbsorbedBlock()) {
+            return super.hurtServer(level, damageSource, amount);
+        }
 
-            float hitScale = props.hitResponseScale(amount);
-            if (damageSource.getDirectEntity() instanceof LivingEntity attacker) {
-                this.knockback(0.4F * hitScale, attacker.getX() - this.getX(), attacker.getZ() - this.getZ());
+        //  EXPLOSION CHAIN LOGIC (must be FIRST)
+        if (damageSource.is(DamageTypes.EXPLOSION)) {
+            if (this.isExplosive()) {
+                this.ignite(true);
             }
-
-            this.playSound(ModSounds.SULFUR_CUBE_HURT, 0.5F, 1.2F);
-            if (props.isSticky()) {
-                Vec3 velocity = this.getDeltaMovement();
-                this.setDeltaMovement(velocity.x * hitScale, velocity.y, velocity.z * hitScale);
-            } else {
-                Vec3 velocity = this.getDeltaMovement();
-                double boostedBounce = Math.min(0.9D, velocity.y + (0.08D * hitScale));
-                this.setDeltaMovement(velocity.x * hitScale, boostedBounce, velocity.z * hitScale);
-            }
-            this.spawnSqualParticles();
             return false;
         }
-        return super.hurtServer(level, damageSource, amount);
+
+        //  safe bypass damage types
+        boolean bypassProtection = damageSource.is(DamageTypes.FELL_OUT_OF_WORLD)
+                || damageSource.is(DamageTypes.GENERIC_KILL);
+
+        if (bypassProtection) {
+            return super.hurtServer(level, damageSource, amount);
+        }
+
+        //  if already ignited, ignore normal damage (but NOT explosion above)
+        if (this.ignited) {
+            return false;
+        }
+
+        CubeBlockProperties props = this.getCubeProperties();
+
+        float hitScale = props.hitResponseScale(amount);
+
+        if (damageSource.getDirectEntity() instanceof LivingEntity attacker) {
+            this.knockback(0.4F * hitScale,
+                    attacker.getX() - this.getX(),
+                    attacker.getZ() - this.getZ());
+        }
+
+        this.playSound(ModSounds.SULFUR_CUBE_HURT, 0.5F, 1.2F);
+
+        if (props.isSticky()) {
+            Vec3 velocity = this.getDeltaMovement();
+            this.setDeltaMovement(
+                    velocity.x * hitScale,
+                    velocity.y,
+                    velocity.z * hitScale
+            );
+        } else {
+            Vec3 velocity = this.getDeltaMovement();
+            double boostedBounce = Math.min(0.9D, velocity.y + (0.08D * hitScale));
+
+            this.setDeltaMovement(
+                    velocity.x * hitScale,
+                    boostedBounce,
+                    velocity.z * hitScale
+            );
+        }
+
+        return false;
     }
 
     @Override
@@ -568,5 +715,42 @@ public class SulfurCubeEntity extends PathfinderMob {
     protected void checkFallDamage(double d, boolean bl, BlockState blockState, BlockPos blockPos) {
         // By leaving this entirely empty, we stop the "landing" check.
         // This kills the default block-dust particles and the landing sounds.
+    }
+
+    private boolean isExplosive() {
+        return this.hasAbsorbedBlock()
+                && this.getCubeProperties().archetype() == CubeBlockProperties.Archetype.TNT;
+    }
+
+    public void ignite(boolean fromExplosion) {
+        if (!this.isExplosive()) return;
+        if (this.ignited) return;
+
+        this.ignited = true;
+        this.explosivePrimed = true;
+
+        this.entityData.set(DATA_IGNITED, true);
+
+        this.playSound(SoundEvents.TNT_PRIMED, 1.0F, 1.0F);
+
+        this.fuseTime = fromExplosion
+                ? this.random.nextIntBetweenInclusive(15, 60)
+                : 120;
+    }
+
+    private void explode() {
+        if (this.level().isClientSide()) return;
+        if (!this.isAlive()) return; //  important safety
+
+        this.level().explode(
+                this,
+                this.getX(),
+                this.getY(),
+                this.getZ(),
+                4.0F,
+                Level.ExplosionInteraction.TNT
+        );
+
+        this.discard();
     }
 }

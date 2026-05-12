@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.15-SNAPSHOT'
+    id 'fabric-loom' version '1.16-SNAPSHOT'
 }
 
 version = project.mod_version
@@ -10,7 +10,7 @@ base {
 }
 
 fabricApi {
-    configureDataGeneration() {
+    configureDataGeneration {
         client = true
     }
 }
@@ -19,9 +19,8 @@ def datagenRunDir = layout.buildDirectory.dir("datagen")
 
 repositories {
     flatDir {
-        dirs 'libs'
+        dirs("libs")
     }
-
 }
 
 dependencies {
@@ -32,8 +31,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
 
-    modImplementation name: 'TerraBlender'
-    include name: 'TerraBlender'
+    modImplementation(include("local:TerraBlender:1.0.0"))
 
     // Night-Config (The New Way)
     // We use 'implementation' for code access and 'include' to bundle it
@@ -48,7 +46,7 @@ processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
     inputs.property "loader_version", project.loader_version
-    filteringCharset "UTF-8"
+    filteringCharset = "UTF-8"
 
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
@@ -81,7 +79,6 @@ java {
     withSourcesJar()
 }
 
-// --- MOVE THIS BLOCK TO THE VERY BOTTOM ---
 
 tasks.named('sourcesJar') {
     dependsOn(tasks.named('runDatagen'))

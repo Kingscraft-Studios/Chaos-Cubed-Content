@@ -1,146 +1,111 @@
 package net.kingscraft.chaoscubed.entity.properties;
 
+import net.minecraft.core.*;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class SulfurCubePropertiesRegistry {
     private static final Map<Block, CubeBlockProperties> REGISTRY = new HashMap<>();
 
     static {
         // Regular
-        register(Blocks.DIRT, CubeBlockProperties.REGULAR);
-        register(Blocks.STONE, CubeBlockProperties.REGULAR);
-        register(Blocks.COBBLESTONE, CubeBlockProperties.REGULAR);
-        register(Blocks.MOSSY_COBBLESTONE, CubeBlockProperties.REGULAR);
-        register(Blocks.SMOOTH_STONE, CubeBlockProperties.REGULAR);
-        register(Blocks.STONE_BRICKS, CubeBlockProperties.REGULAR);
-        register(Blocks.CHISELED_STONE_BRICKS, CubeBlockProperties.REGULAR);
-        register(Blocks.CRACKED_STONE_BRICKS, CubeBlockProperties.REGULAR);
-        register(Blocks.MOSSY_STONE_BRICKS, CubeBlockProperties.REGULAR);
+        registerTag(BlockTags.CONCRETE_POWDER, CubeBlockProperties.REGULAR);
+        registerTag(BlockTags.DIRT, CubeBlockProperties.REGULAR, Blocks.MYCELIUM, Blocks.MOSS_BLOCK, Blocks.PALE_MOSS_BLOCK);
+        register(Blocks.PACKED_MUD, CubeBlockProperties.REGULAR);
+        register(Blocks.COAL_BLOCK, CubeBlockProperties.REGULAR);
+        register(Blocks.CLAY, CubeBlockProperties.REGULAR);
+        register(Blocks.BONE_BLOCK, CubeBlockProperties.REGULAR);
 
         // Sticky
         register(Blocks.HONEY_BLOCK, CubeBlockProperties.STICKY);
         register(Blocks.HONEYCOMB_BLOCK, CubeBlockProperties.STICKY);
 
-        // Heavy
-        register(Blocks.QUARTZ_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.QUARTZ_BRICKS, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.CHISELED_QUARTZ_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.QUARTZ_PILLAR, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.SMOOTH_QUARTZ, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.COPPER_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        // Slow Flat
         register(Blocks.IRON_BLOCK, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.GOLD_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.AMETHYST_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.COAL_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.DIAMOND_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.EMERALD_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.LAPIS_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.RAW_COPPER_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.RAW_GOLD_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.RAW_IRON_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.GOLD_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.NETHER_GOLD_ORE, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.IRON_ORE, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.COPPER_ORE, CubeBlockProperties.SLOW_FLAT);
         register(Blocks.NETHERITE_BLOCK, CubeBlockProperties.SLOW_FLAT);
-        register(Blocks.REDSTONE_BLOCK, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.ANCIENT_DEBRIS, CubeBlockProperties.SLOW_FLAT);
+        registerTag(BlockTags.COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.EXPOSED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WEATHERED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.OXIDIZED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_EXPOSED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_WEATHERED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_OXIDIZED_COPPER_BULB, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.EXPOSED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WEATHERED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.OXIDIZED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_EXPOSED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_WEATHERED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_OXIDIZED_CUT_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.EXPOSED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WEATHERED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.OXIDIZED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_EXPOSED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_WEATHERED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
+        register(Blocks.WAXED_OXIDIZED_CHISELED_COPPER, CubeBlockProperties.SLOW_FLAT);
 
         // Light
-        // Oak
-        register(Blocks.OAK_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_OAK_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.OAK_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_OAK_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.OAK_PLANKS, CubeBlockProperties.LIGHT);
-        // Spruce
-        register(Blocks.SPRUCE_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_SPRUCE_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.SPRUCE_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_SPRUCE_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.SPRUCE_PLANKS, CubeBlockProperties.LIGHT);
+        registerTag(BlockTags.WOOL, CubeBlockProperties.LIGHT);
 
-        // Birch
-        register(Blocks.BIRCH_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_BIRCH_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.BIRCH_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_BIRCH_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.BIRCH_PLANKS, CubeBlockProperties.LIGHT);
+        //TNT
+        register(Blocks.TNT, CubeBlockProperties.EXPLOSIVE);
 
-        // Jungle
-        register(Blocks.JUNGLE_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_JUNGLE_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.JUNGLE_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_JUNGLE_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.JUNGLE_PLANKS, CubeBlockProperties.LIGHT);
+    }
 
-        // Acacia
-        register(Blocks.ACACIA_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_ACACIA_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.ACACIA_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_ACACIA_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.ACACIA_PLANKS, CubeBlockProperties.LIGHT);
+    public static void registerTag(
+            TagKey<Block> tag,
+            CubeBlockProperties props,
+            Block... excludedBlocks
+    ) {
 
-        // Dark Oak
-        register(Blocks.DARK_OAK_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_DARK_OAK_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.DARK_OAK_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_DARK_OAK_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.DARK_OAK_PLANKS, CubeBlockProperties.LIGHT);
+        Set<Block> excluded = Set.of(excludedBlocks);
 
-        // Mangrove
-        register(Blocks.MANGROVE_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_MANGROVE_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.MANGROVE_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_MANGROVE_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.MANGROVE_PLANKS, CubeBlockProperties.LIGHT);
+        for (Holder<Block> holder : BuiltInRegistries.BLOCK.getTagOrEmpty(tag)) {
+            Block block = holder.value();
 
-        // Cherry
-        register(Blocks.CHERRY_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_CHERRY_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.CHERRY_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_CHERRY_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.CHERRY_PLANKS, CubeBlockProperties.LIGHT);
+            // Skip excluded blocks
+            if (excluded.contains(block)) {
+                continue;
+            }
 
-        // Pale Oak
-        register(Blocks.PALE_OAK_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_PALE_OAK_LOG, CubeBlockProperties.LIGHT);
-        register(Blocks.PALE_OAK_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_PALE_OAK_WOOD, CubeBlockProperties.LIGHT);
-        register(Blocks.PALE_OAK_PLANKS, CubeBlockProperties.LIGHT);
+            BlockState state = block.defaultBlockState();
 
-        // Bamboo
-        register(Blocks.BAMBOO_BLOCK, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_BAMBOO_BLOCK, CubeBlockProperties.LIGHT);
-        register(Blocks.BAMBOO_MOSAIC, CubeBlockProperties.LIGHT);
+            // Only real full cube blocks
+            if (!Block.isShapeFullBlock(
+                    state.getCollisionShape(
+                            EmptyBlockGetter.INSTANCE,
+                            BlockPos.ZERO
+                    )
+            )) {
+                continue;
+            }
 
-        // Crimson
-        register(Blocks.CRIMSON_STEM, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_CRIMSON_STEM, CubeBlockProperties.LIGHT);
-        register(Blocks.CRIMSON_HYPHAE, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_CRIMSON_HYPHAE, CubeBlockProperties.LIGHT);
-        register(Blocks.CRIMSON_PLANKS, CubeBlockProperties.LIGHT);
-
-        // Warped
-        register(Blocks.WARPED_STEM, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_WARPED_STEM, CubeBlockProperties.LIGHT);
-        register(Blocks.WARPED_HYPHAE, CubeBlockProperties.LIGHT);
-        register(Blocks.STRIPPED_WARPED_HYPHAE, CubeBlockProperties.LIGHT);
-        register(Blocks.WARPED_PLANKS, CubeBlockProperties.LIGHT);
-
-        //Wool
-        register(Blocks.WHITE_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.LIGHT_GRAY_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.GRAY_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.BLACK_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.BROWN_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.RED_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.ORANGE_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.YELLOW_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.GREEN_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.LIME_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.CYAN_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.LIGHT_BLUE_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.BLUE_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.PURPLE_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.MAGENTA_WOOL, CubeBlockProperties.LIGHT);
-        register(Blocks.PINK_WOOL, CubeBlockProperties.LIGHT);
+            REGISTRY.put(block, props);
+        }
     }
 
     public static void register(Block block, CubeBlockProperties props) {
