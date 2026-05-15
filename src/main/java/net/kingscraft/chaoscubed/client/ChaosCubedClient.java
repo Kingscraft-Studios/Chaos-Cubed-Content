@@ -7,26 +7,21 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityModelLayerRegistry;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.kingscraft.chaoscubed.friends.api.Friends;
 import net.kingscraft.chaoscubed.entity.ModEntities;
 import net.kingscraft.chaoscubed.entity.client.sulfurcube.SulfurCubeModel;
 import net.kingscraft.chaoscubed.entity.client.sulfurcube.SulfurCubeRenderer;
-import net.kingscraft.chaoscubed.friends.client.FriendsService;
+import net.kingscraft.chaoscubed.friends.api.FriendsApi;
 import net.kingscraft.chaoscubed.friends.ui.FriendsScreen;
 import net.kingscraft.chaoscubed.particles.ModParticles;
 import net.kingscraft.chaoscubed.particles.SulfurGooProvider;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.renderer.entity.EntityRenderers;
-import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 public class ChaosCubedClient implements ClientModInitializer {
     public static KeyMapping openFriendKey;
-    private static boolean registeredThisSession;
-    private static long nextFriendsPollMs;
 
     @Override
     public void onInitializeClient() {
@@ -46,40 +41,42 @@ public class ChaosCubedClient implements ClientModInitializer {
             while (openFriendKey.consumeClick()) {
                 client.setScreen(new FriendsScreen());
             }
-
-            if (client.player == null) {
-                return;
-            }
-
-            long now = System.currentTimeMillis();
-            boolean friendsOpen = client.screen instanceof FriendsScreen;
-            long interval = friendsOpen ? 60_000L : 300_000L;
-            if (now >= nextFriendsPollMs) {
-                nextFriendsPollMs = now + interval;
-                FriendsService.refresh(client.player.getStringUUID());
-            }
         });
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            if (client.player == null || registeredThisSession) {
-                return;
-            }
+            if (client.player == null) return;
 
-            registeredThisSession = true;
-            CompletableFuture.runAsync(() -> {
-                Friends.ensurePlayer(
-                        client.player.getStringUUID(),
-                        client.player.getName().getString()
-                );
-            }).thenRunAsync(() -> CompletableFuture.delayedExecutor(5, TimeUnit.SECONDS).execute(() ->
-                    client.execute(() -> {
-                        if (client.player != null) {
-                            VersionChecker.sendUpdateMessage(client.player);
+            String uuid = client.player.getUUID().toString();
+            String name = client.player.getName().getString();
+
+            System.out.println("[FriendsDebug] Checking database for: " + name);
+
+            java.util.concurrent.CompletableFuture.supplyAsync(() -> FriendsApi.getFriends(uuid))
+                    .thenAccept(response -> {
+                        // If the user doesn't exist, the Worker's error JSON
+                        // causes the 'uuid' or 'friends' fields in our record to be null.
+                        if (response == null || response.uuid()  == null) {
+                            System.out.println("[FriendsDebug] Profile missing. Registering...");
+                            FriendsApi.registerPlayer(uuid, name);
+                        } else {
+                            System.out.println("[FriendsDebug] Profile found for " + response.name());
                         }
-                    })
-            ));
+                    }).exceptionally(ex -> {
+                        // This catches 404s if your API wrapper throws an exception on non-200 codes
+                        System.out.println("[FriendsDebug] Request failed (likely 404). Registering...");
+                        FriendsApi.registerPlayer(uuid, name);
+                        return null;
+                    });
         });
 
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> registeredThisSession = false);
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            CompletableFuture.runAsync(() -> {
+                client.execute(() -> {
+                    if (client.player != null) {
+                        VersionChecker.sendUpdateMessage(client.player);
+                    }
+                });
+            });
+        });
     }
 }

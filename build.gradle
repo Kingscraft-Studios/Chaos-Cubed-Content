@@ -18,28 +18,29 @@ fabricApi {
 def datagenRunDir = layout.buildDirectory.dir("datagen")
 
 repositories {
+    maven { url = 'https://maven.wispforest.io' }
+    maven { url = 'https://jitpack.io' }
     flatDir {
         dirs("libs")
     }
 }
 
 dependencies {
+    // Fabric
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-
+    // TerraBlender and its Dependencies
     modImplementation(include("local:TerraBlender:1.0.0"))
+    implementation "com.electronwill.night-config:toml:${project.nightconfig}"
+    include "com.electronwill.night-config:toml:${project.nightconfig}"
+    implementation "com.electronwill.night-config:core:${project.nightconfig}"
+    include "com.electronwill.night-config:core:${project.nightconfig}"
 
-    // Night-Config (The New Way)
-    // We use 'implementation' for code access and 'include' to bundle it
-    implementation "com.electronwill.night-config:toml:3.8.4"
-    include "com.electronwill.night-config:toml:3.8.4"
-
-    implementation "com.electronwill.night-config:core:3.8.4"
-    include "com.electronwill.night-config:core:3.8.4"
+    modImplementation "io.wispforest:owo-lib:${project.owo_version}"
+    include "io.wispforest:owo-lib:${project.owo_version}"
 }
 
 processResources {

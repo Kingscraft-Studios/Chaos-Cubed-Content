@@ -1,240 +1,286 @@
 package net.kingscraft.chaoscubed.friends.ui;
 
-import net.kingscraft.chaoscubed.friends.api.FriendRecord;
-import net.kingscraft.chaoscubed.friends.api.FriendsResponse;
-import net.kingscraft.chaoscubed.friends.client.FriendsService;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.input.KeyEvent;
+import io.wispforest.owo.ui.base.BaseOwoScreen;
+import io.wispforest.owo.ui.component.LabelComponent;
+import io.wispforest.owo.ui.component.TextBoxComponent;
+import io.wispforest.owo.ui.component.UIComponents;
+import io.wispforest.owo.ui.container.FlowLayout;
+import io.wispforest.owo.ui.container.UIContainers;
+import io.wispforest.owo.ui.core.*;
+import net.kingscraft.chaoscubed.friends.api.FriendsApi;
+import net.kingscraft.chaoscubed.friends.structure.FriendsModels;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
+public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
-public class FriendsScreen extends Screen {
-    private FriendListWidget list;
-    private EditBox targetBox;
-    private Button friendsTab;
-    private Button pendingTab;
-    private Button refreshButton;
-    private Button primaryAction;
-    private Button secondaryAction;
-    private Button tertiaryAction;
-    private boolean showPending;
-    private String statusLine = "Loading friends...";
-    private long nextRefreshAt;
-    private String currentUuidValue;
+    private FlowLayout contentPanel;
+    private FlowLayout friendsTab;
+    private FlowLayout requestsTab;
+    private boolean isFriendsTab = true;
+    private FlowLayout friendsListContainer;
 
-    public FriendsScreen() {
-        super(Component.literal("Friends"));
+    @Override
+    protected @NotNull OwoUIAdapter<FlowLayout> createAdapter() {
+        return OwoUIAdapter.create(this, (h, v) -> UIContainers.verticalFlow(Sizing.fill(100), Sizing.fill(100)));
     }
 
     @Override
-    protected void init() {
-        int centerX = this.width / 2;
-        int panelWidth = 260;
-        int listTop = 88;
-        int listHeight = this.height - listTop - 28;
+    protected void build(FlowLayout rootComponent) {
+        rootComponent.surface(Surface.VANILLA_TRANSLUCENT);
+        rootComponent.horizontalAlignment(HorizontalAlignment.CENTER);
+        rootComponent.verticalAlignment(VerticalAlignment.CENTER);
 
-        this.friendsTab = this.addRenderableWidget(Button.builder(Component.literal("Friends"), button -> {
-            this.showPending = false;
-            this.refreshFriends();
-        }).bounds(centerX - 128, 22, 64, 20).build());
+        // --- 1. TABS AREA ---
+        var tabs = UIContainers.horizontalFlow(Sizing.fixed(200), Sizing.content());
+        tabs.horizontalAlignment(HorizontalAlignment.CENTER);
+        tabs.gap(4); // Tight gap like buttons
 
-        this.pendingTab = this.addRenderableWidget(Button.builder(Component.literal("Pending"), button -> {
-            this.showPending = true;
-            this.refreshFriends();
-        }).bounds(centerX - 60, 22, 64, 20).build());
+        friendsTab = createTab("Friends");
+        requestsTab = createTab("Requests (0)");
 
-        this.refreshButton = this.addRenderableWidget(Button.builder(Component.literal("Refresh"), button -> this.refreshFriends())
-                .bounds(centerX + 8, 22, 64, 20)
-                .build());
+        friendsTab.mouseDown().subscribe((x, y) -> {
+            if (!isFriendsTab) { isFriendsTab = true; refreshUI(); loadDataAndRefresh(); }
+            return true;
+        });
 
-        this.targetBox = new EditBox(this.font, centerX - (panelWidth / 2), 52, panelWidth - 60, 20, Component.literal("Profile Name"));
-        this.targetBox.setHint(Component.literal("Profile Name"));
-        this.addRenderableWidget(this.targetBox);
+        requestsTab.mouseDown().subscribe((x, y) -> {
+            if (isFriendsTab) { isFriendsTab = false; refreshUI(); loadDataAndRefresh(); }
+            return true;
+        });
 
-        this.addRenderableWidget(Button.builder(Component.literal("Send"), button -> sendRequest(this.targetBox.getValue()))
-                .bounds(centerX + (panelWidth / 2) - 50, 52, 50, 20)
-                .build());
+        tabs.child(friendsTab);
+        tabs.child(requestsTab);
+        rootComponent.child(tabs);
 
-        this.primaryAction = this.addRenderableWidget(Button.builder(Component.literal("Action"), button -> applyPrimaryAction())
-                .bounds(centerX + 80, 52, 52, 20).build());
-        this.secondaryAction = this.addRenderableWidget(Button.builder(Component.literal("Alt"), button -> applySecondaryAction())
-                .bounds(centerX + 136, 52, 42, 20).build());
-        this.tertiaryAction = this.addRenderableWidget(Button.builder(Component.literal("More"), button -> applyTertiaryAction())
-                .bounds(centerX + 182, 52, 42, 20).build());
+        // --- 2. MAIN CONTENT BOX ---
+        contentPanel = UIContainers.verticalFlow(Sizing.fixed(200), Sizing.fill(70));
+        contentPanel.surface(Surface.flat(0xFF151515).and(Surface.outline(0xFFFFFFFF)));
+        contentPanel.padding(Insets.of(16));
+        contentPanel.margins(Insets.top(-1)); // Connect to tabs
+        contentPanel.horizontalAlignment(HorizontalAlignment.CENTER);
 
-        this.list = new FriendListWidget(this.minecraft, panelWidth, listHeight, listTop, 28);
-        this.list.setX(centerX - (panelWidth / 2));
-        this.addRenderableWidget(this.list);
+        rootComponent.child(contentPanel);
 
-        this.refreshFriends();
+        refreshUI();
+        loadDataAndRefresh();
     }
 
-    private String currentUuid() {
-        if (this.currentUuidValue != null) {
-            return this.currentUuidValue;
-        }
-        return this.minecraft != null && this.minecraft.player != null ? this.minecraft.player.getStringUUID() : null;
+    private void refreshUI() {
+        updateTabVisuals();
+        rebuildContent();
     }
 
-    private FriendRecord selected() {
-        return this.list != null && this.list.getSelected() != null ? toRecord(this.list.getSelected()) : null;
+    private FlowLayout createTab(String text) {
+        var container = UIContainers.verticalFlow(Sizing.fixed(98), Sizing.fixed(22));
+        container.horizontalAlignment(HorizontalAlignment.CENTER);
+        container.verticalAlignment(VerticalAlignment.CENTER);
+        container.cursorStyle(CursorStyle.HAND);
+
+        // This makes the tab look like a Minecraft button background
+        container.surface(Surface.PANEL);
+
+        // Child 0: Text
+        container.child(UIComponents.label(Component.literal(text)).shadow(true));
+
+        // Child 1: The Active Line slot (absolute positioned at the bottom)
+        var line = UIContainers.horizontalFlow(Sizing.fixed(80), Sizing.fixed(1));
+        line.positioning(Positioning.relative(50, 100)); // Bottom center
+        container.child(line);
+
+        return container;
     }
 
-    private FriendRecord toRecord(FriendEntry entry) {
-        FriendRecord record = new FriendRecord();
-        record.uuid = entry.getUuid();
-        record.name = entry.getName();
-        record.direction = entry.getDirection();
-        record.presence = entry.getStatus();
-        return record;
+    private void updateTabVisuals() {
+        FlowLayout fLine = (FlowLayout) friendsTab.children().get(1);
+        LabelComponent fLabel = (LabelComponent) friendsTab.children().get(0);
+
+        FlowLayout rLine = (FlowLayout) requestsTab.children().get(1);
+        LabelComponent rLabel = (LabelComponent) requestsTab.children().get(0);
+
+        fLine.surface(isFriendsTab ? Surface.flat(0xFFFFFFFF) : Surface.BLANK);
+        rLine.surface(!isFriendsTab ? Surface.flat(0xFFFFFFFF) : Surface.BLANK);
+
+        fLabel.color(isFriendsTab ? Color.WHITE : Color.ofRgb(0xAAAAAA));
+        rLabel.color(!isFriendsTab ? Color.WHITE : Color.ofRgb(0xAAAAAA));
     }
 
-    private void sendRequest(String targetProfileName) {
-        String from = currentUuid();
-        if (from == null || targetProfileName == null || targetProfileName.isBlank()) {
-            this.statusLine = "Enter a profile name.";
-            return;
-        }
+    private void rebuildContent() {
+        contentPanel.clearChildren();
 
-        CompletableFuture.runAsync(() -> net.kingscraft.chaoscubed.friends.api.Friends.sendFriendRequestByName(from, targetProfileName.trim()))
-                .whenComplete((ignored, error) -> this.minecraft.execute(() -> {
-                    this.statusLine = error != null ? "Request failed." : "Friend request sent.";
-                    this.targetBox.setValue("");
-                    this.refreshFriends();
-                }));
-    }
+        if (isFriendsTab) {
+            // --- FRIENDS VIEW: SEARCH + SEND ---
+            var searchRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content());
+            searchRow.verticalAlignment(VerticalAlignment.CENTER);
+            searchRow.gap(4);
 
-    private void applyPrimaryAction() {
-        FriendEntry selected = this.list == null ? null : this.list.getSelected();
-        if (selected == null) return;
+            TextBoxComponent searchBar = UIComponents.textBox(Sizing.fill(70));
+            searchBar.setMaxLength(16);
+            searchBar.setSuggestion("Enter Profile Name");
 
-        String uuid = currentUuid();
-        if (uuid == null) return;
-
-        CompletableFuture.runAsync(() -> {
-            if (this.showPending) {
-                if ("incoming".equals(selected.getDirection())) {
-                    net.kingscraft.chaoscubed.friends.api.Friends.acceptFriendRequest(uuid, selected.getUuid());
+            // This listener checks every keystroke
+            searchBar.onChanged().subscribe(value -> {
+                if (!value.isEmpty()) {
+                    // Clear the ghost text so it doesn't overlap your typing
+                    searchBar.setSuggestion("");
                 } else {
-                    net.kingscraft.chaoscubed.friends.api.Friends.cancelFriendRequest(uuid, selected.getUuid());
+                    // Bring it back if the box is empty
+                    searchBar.setSuggestion("Enter Profile Name");
+                }
+            });
+
+            searchRow.child(searchBar);
+
+            var sendBtn = UIComponents.button(Component.literal("Send"), b -> {
+                String targetName = searchBar.getValue();
+                if (!targetName.isEmpty()) {
+                    System.out.println("[FriendsDebug] Attempting to send request to: " + targetName);
+
+                    java.util.concurrent.CompletableFuture.supplyAsync(() ->
+                            FriendsApi.sendFriendRequestByName(this.minecraft.player.getUUID().toString(), targetName)
+                    ).thenAccept(res -> {
+                        System.out.println("[FriendsDebug] Send Request Status: " + (res != null ? "Success" : "Failed"));
+                        this.minecraft.execute(() -> {
+                            searchBar.text("");
+                            loadDataAndRefresh();
+                        });
+                    });
+                }
+            }).sizing(Sizing.fixed(40), Sizing.fixed(20));
+
+            sendBtn.margins(Insets.right(2));
+            searchRow.child(sendBtn);
+            contentPanel.child(searchRow);
+
+            // --- NAME LINE ---
+            var nameLine = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
+            nameLine.verticalAlignment(VerticalAlignment.CENTER);
+            nameLine.margins(Insets.vertical(5));
+            nameLine.child(UIComponents.label(Component.literal("My profile: ")).color(Color.ofRgb(0x888888)));
+
+            String playerName = this.minecraft.player != null ? this.minecraft.player.getName().getString() : "Player";
+            nameLine.child(UIComponents.label(Component.literal(playerName)));
+            contentPanel.child(nameLine);
+
+            // --- THE SEPARATOR (Acting as the list "Edge") ---
+            // The separator line acting as a "cap"
+            contentPanel.child(UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(1))
+                    .surface(Surface.flat(0xFF444444))
+                    .margins(Insets.bottom(4)));
+        }
+
+        // --- THE SCROLLABLE LIST ---
+        var list = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content());
+        this.friendsListContainer = list;
+
+        contentPanel.child(UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), list));
+    }
+
+    private void loadDataAndRefresh() {
+        if (this.minecraft.player == null) return;
+        String uuid = this.minecraft.player.getUUID().toString();
+
+        System.out.println("[FriendsDebug] Fetching data for UUID: " + uuid);
+
+        java.util.concurrent.CompletableFuture.supplyAsync(() -> FriendsApi.getFriends(uuid))
+                .thenAccept(response -> {
+                    if (response != null) {
+                        System.out.println("[FriendsDebug] Received response! Badge count: " + response.incomingBadge());
+                        this.minecraft.execute(() -> this.renderData(response));
+                    } else {
+                        System.out.println("[FriendsDebug] API returned NULL (Check your Worker URL or internet)");
+                    }
+                }).exceptionally(ex -> {
+                    System.out.println("[FriendsDebug] API CRASHED: " + ex.getMessage());
+                    ex.printStackTrace();
+                    return null;
+                });
+    }
+
+    private void renderData(FriendsModels.FriendsListResponse data) {
+        // Existing badge logic...
+        LabelComponent rLabel = (LabelComponent) requestsTab.children().get(0);
+        rLabel.text(Component.literal("Requests (" + data.incomingBadge() + ")"));
+
+        if (this.friendsListContainer == null) return;
+        this.friendsListContainer.clearChildren();
+
+        if (isFriendsTab) {
+            int friendCount = (data.friends() != null) ? data.friends().size() : 0;
+            System.out.println("[FriendsDebug] Rendering Friends Tab. Count: " + friendCount);
+
+            if (friendCount > 0) {
+                for (var friend : data.friends()) {
+                    System.out.println("[FriendsDebug] Found Friend: " + friend.name() + " (" + friend.presence() + ")");
+                    this.friendsListContainer.child(createFriendRow(friend));
                 }
             } else {
-                net.kingscraft.chaoscubed.friends.api.Friends.removeFriend(uuid, selected.getUuid());
+                this.addEmptyLabel("No friends yet!");
             }
-        }).whenComplete((ignored, error) -> this.minecraft.execute(() -> {
-            this.statusLine = error != null ? "Action failed." : "Done.";
-            this.refreshFriends();
-        }));
-    }
+        } else {
+            int reqCount = (data.requests() != null) ? data.requests().size() : 0;
+            System.out.println("[FriendsDebug] Rendering Requests Tab. Count: " + reqCount);
 
-    private void applySecondaryAction() {
-        FriendEntry selected = this.list == null ? null : this.list.getSelected();
-        if (selected == null || !this.showPending || !"incoming".equals(selected.getDirection())) return;
-        CompletableFuture.runAsync(() -> net.kingscraft.chaoscubed.friends.api.Friends.declineFriendRequest(currentUuid(), selected.getUuid()))
-                .whenComplete((ignored, error) -> this.minecraft.execute(() -> {
-                    this.statusLine = error != null ? "Decline failed." : "Request declined.";
-                    this.refreshFriends();
-                }));
-    }
-
-    private void applyTertiaryAction() {
-        FriendEntry selected = this.list == null ? null : this.list.getSelected();
-        if (selected == null || !this.showPending || !"outgoing".equals(selected.getDirection())) return;
-        CompletableFuture.runAsync(() -> net.kingscraft.chaoscubed.friends.api.Friends.cancelFriendRequest(currentUuid(), selected.getUuid()))
-                .whenComplete((ignored, error) -> this.minecraft.execute(() -> {
-                    this.statusLine = error != null ? "Cancel failed." : "Request canceled.";
-                    this.refreshFriends();
-                }));
-    }
-
-    private void refreshFriends() {
-        String uuid = currentUuid();
-        if (uuid == null) {
-            this.statusLine = "Join a world to load friends.";
-            return;
-        }
-        this.currentUuidValue = uuid;
-        this.statusLine = "Refreshing...";
-        FriendsService.refresh(uuid).whenComplete((data, error) -> this.minecraft.execute(() -> {
-            this.list.clearEntries();
-            if (error != null || data == null) {
-                this.statusLine = "No friend data available.";
-                return;
+            if (reqCount > 0) {
+                for (var req : data.requests()) {
+                    System.out.println("[FriendsDebug] Found Request from: " + req.name());
+                    this.friendsListContainer.child(createRequestRow(req));
+                }
+            } else {
+                this.addEmptyLabel("No pending requests.");
             }
-
-            List<FriendRecord> rows = this.showPending
-                    ? concat(data.requests, data.outgoingRequests)
-                    : safe(data.friends);
-
-            for (FriendRecord record : rows) {
-                boolean request = "incoming".equals(record.direction);
-                this.list.addFriend(record.name, record.uuid, record.presence, request, record.direction);
-            }
-
-            this.statusLine = rows.isEmpty()
-                    ? (this.showPending ? "No pending requests." : "No friends yet.")
-                    : "Ready.";
-        }));
-    }
-
-    @Override
-    public boolean keyPressed(KeyEvent keyEvent) {
-        if (this.targetBox != null && this.targetBox.isFocused() && keyEvent.isConfirmation()) {
-            this.sendRequest(this.targetBox.getValue());
-            return true;
-        }
-        return super.keyPressed(keyEvent);
-    }
-
-    private List<FriendRecord> safe(List<FriendRecord> values) {
-        return values == null ? Collections.emptyList() : values;
-    }
-
-    private List<FriendRecord> concat(List<FriendRecord> a, List<FriendRecord> b) {
-        java.util.ArrayList<FriendRecord> out = new java.util.ArrayList<>();
-        out.addAll(safe(a));
-        out.addAll(safe(b));
-        return out;
-    }
-
-    @Override
-    public void tick() {
-        super.tick();
-        long now = System.currentTimeMillis();
-        if (this.currentUuidValue != null && now >= this.nextRefreshAt) {
-            this.nextRefreshAt = now + (this.minecraft != null && this.minecraft.screen == this ? 60_000L : 300_000L);
-            this.refreshFriends();
-        }
-        if (this.primaryAction != null) {
-            this.primaryAction.setMessage(Component.literal(this.showPending ? "Accept" : "Remove"));
-        }
-        if (this.secondaryAction != null) {
-            this.secondaryAction.visible = this.showPending;
-            this.secondaryAction.setMessage(Component.literal("Decline"));
-        }
-        if (this.tertiaryAction != null) {
-            this.tertiaryAction.visible = this.showPending;
-            this.tertiaryAction.setMessage(Component.literal("Cancel"));
-        }
-        if (this.showPending && this.list != null && this.list.getSelected() != null) {
-            String dir = this.list.getSelected().getDirection();
-            this.primaryAction.setMessage(Component.literal("incoming".equals(dir) ? "Accept" : "Cancel"));
-            this.secondaryAction.visible = "incoming".equals(dir);
-            this.tertiaryAction.visible = "outgoing".equals(dir);
         }
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
-        this.renderBackground(graphics, mouseX, mouseY, delta);
-        graphics.drawCenteredString(this.font, this.title, this.width / 2, 8, 0xFFFFFF);
-        graphics.drawCenteredString(this.font, Component.literal(this.statusLine), this.width / 2, 76, 0xAAAAAA);
-        super.render(graphics, mouseX, mouseY, delta);
+    // Helper to keep renderData clean
+    private void addEmptyLabel(String text) {
+        LabelComponent emptyLabel = UIComponents.label(Component.literal(text));
+        emptyLabel.horizontalSizing(Sizing.fill(100));
+        emptyLabel.horizontalTextAlignment(HorizontalAlignment.CENTER);
+        emptyLabel.margins(Insets.top(10));
+        this.friendsListContainer.child(emptyLabel);
+    }
+
+    private FlowLayout createFriendRow(FriendsModels.FriendEntry friend) {
+        var row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(25));
+        row.verticalAlignment(VerticalAlignment.CENTER);
+        row.gap(8);
+
+        // Online/Offline Dot
+        int statusColor = friend.presence().equals("OFFLINE") ? 0xFFFF0000 : 0xFF00FF00;
+        row.child(UIComponents.label(Component.literal("●")).color(Color.ofArgb(statusColor)));
+
+        row.child(UIComponents.label(Component.literal(friend.name())));
+
+        return row;
+    }
+
+    private FlowLayout createRequestRow(FriendsModels.RequestEntry req) {
+        var row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(25));
+        row.verticalAlignment(VerticalAlignment.CENTER);
+        row.padding(Insets.horizontal(8));
+
+        // 1. The Name Label
+        // We limit this to 80% so it cannot push the button group off-screen
+        LabelComponent nameLabel = UIComponents.label(Component.literal(req.name()));
+        nameLabel.horizontalSizing(Sizing.fill(80));
+        nameLabel.verticalSizing(Sizing.content());
+        row.child(nameLabel);
+
+        // 2. The Button Group
+        // This will now sit comfortably in the remaining 20% of the row
+        var buttonGroup = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
+        buttonGroup.verticalAlignment(VerticalAlignment.CENTER);
+
+        var acceptBtn = UIComponents.button(Component.literal("✔"), b -> {
+            java.util.concurrent.CompletableFuture.runAsync(() ->
+                    FriendsApi.acceptRequest(this.minecraft.player.getUUID().toString(), req.uuid())
+            ).thenRun(this::loadDataAndRefresh);
+        }).sizing(Sizing.fixed(20));
+
+        buttonGroup.child(acceptBtn);
+        row.child(buttonGroup);
+
+        return row;
     }
 }
