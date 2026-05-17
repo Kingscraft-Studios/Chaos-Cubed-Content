@@ -18,3 +18,4 @@ replay_pid*
 build
 .idea
 run
+app-worker/node_modules
