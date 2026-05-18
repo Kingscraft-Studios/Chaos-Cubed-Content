@@ -8,9 +8,14 @@ import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
 import net.kingscraft.chaoscubed.friends.api.FriendsApi;
+import net.kingscraft.chaoscubed.friends.api.FriendsWebSocketManager;
 import net.kingscraft.chaoscubed.friends.structure.FriendsModels;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
@@ -19,6 +24,9 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
     private FlowLayout requestsTab;
     private boolean isFriendsTab = true;
     private FlowLayout friendsListContainer;
+
+    private FriendsModels.FriendsListResponse friendsData;
+    private FriendsModels.RequestsResponse requestsData;
 
     @Override
     protected @NotNull OwoUIAdapter<FlowLayout> createAdapter() {
@@ -34,7 +42,7 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         // --- 1. TABS AREA ---
         var tabs = UIContainers.horizontalFlow(Sizing.fixed(200), Sizing.content());
         tabs.horizontalAlignment(HorizontalAlignment.CENTER);
-        tabs.gap(4); // Tight gap like buttons
+        tabs.gap(4);
 
         friendsTab = createTab("Friends");
         requestsTab = createTab("Requests (0)");
@@ -57,13 +65,24 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         contentPanel = UIContainers.verticalFlow(Sizing.fixed(200), Sizing.fill(70));
         contentPanel.surface(Surface.flat(0xFF151515).and(Surface.outline(0xFFFFFFFF)));
         contentPanel.padding(Insets.of(16));
-        contentPanel.margins(Insets.top(-1)); // Connect to tabs
+        contentPanel.margins(Insets.top(-1));
         contentPanel.horizontalAlignment(HorizontalAlignment.CENTER);
 
         rootComponent.child(contentPanel);
 
+        // --- 3. WIRE WEBSOCKET EVENTS TO AUTO-REFRESH ---
+        FriendsWebSocketManager.setOnFriendRequest(this::onFriendEvent);
+        FriendsWebSocketManager.setOnFriendAccepted(this::onFriendEvent);
+        FriendsWebSocketManager.setOnFriendRemoved(this::onFriendEvent);
+
         refreshUI();
         loadDataAndRefresh();
+    }
+
+    private void onFriendEvent() {
+        if (this.minecraft != null) {
+            this.minecraft.execute(this::loadDataAndRefresh);
+        }
     }
 
     private void refreshUI() {
@@ -76,18 +95,12 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         container.horizontalAlignment(HorizontalAlignment.CENTER);
         container.verticalAlignment(VerticalAlignment.CENTER);
         container.cursorStyle(CursorStyle.HAND);
-
-        // This makes the tab look like a Minecraft button background
         container.surface(Surface.PANEL);
-
-        // Child 0: Text
         container.child(UIComponents.label(Component.literal(text)).shadow(true));
 
-        // Child 1: The Active Line slot (absolute positioned at the bottom)
         var line = UIContainers.horizontalFlow(Sizing.fixed(80), Sizing.fixed(1));
-        line.positioning(Positioning.relative(50, 100)); // Bottom center
+        line.positioning(Positioning.relative(50, 100));
         container.child(line);
-
         return container;
     }
 
@@ -118,13 +131,10 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
             searchBar.setMaxLength(16);
             searchBar.setSuggestion("Enter Profile Name");
 
-            // This listener checks every keystroke
             searchBar.onChanged().subscribe(value -> {
                 if (!value.isEmpty()) {
-                    // Clear the ghost text so it doesn't overlap your typing
                     searchBar.setSuggestion("");
                 } else {
-                    // Bring it back if the box is empty
                     searchBar.setSuggestion("Enter Profile Name");
                 }
             });
@@ -134,12 +144,9 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
             var sendBtn = UIComponents.button(Component.literal("Send"), b -> {
                 String targetName = searchBar.getValue();
                 if (!targetName.isEmpty()) {
-                    System.out.println("[FriendsDebug] Attempting to send request to: " + targetName);
-
-                    java.util.concurrent.CompletableFuture.supplyAsync(() ->
-                            FriendsApi.sendFriendRequestByName(this.minecraft.player.getUUID().toString(), targetName)
+                    CompletableFuture.supplyAsync(() ->
+                            FriendsApi.sendFriendRequestByName(Minecraft.getInstance().getUser().getProfileId().toString(), targetName)
                     ).thenAccept(res -> {
-                        System.out.println("[FriendsDebug] Send Request Status: " + (res != null ? "Success" : "Failed"));
                         this.minecraft.execute(() -> {
                             searchBar.text("");
                             loadDataAndRefresh();
@@ -158,18 +165,17 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
             nameLine.margins(Insets.vertical(5));
             nameLine.child(UIComponents.label(Component.literal("My profile: ")).color(Color.ofRgb(0x888888)));
 
-            String playerName = this.minecraft.player != null ? this.minecraft.player.getName().getString() : "Player";
+            String playerName = Minecraft.getInstance().getUser().getName();
             nameLine.child(UIComponents.label(Component.literal(playerName)));
             contentPanel.child(nameLine);
 
-            // --- THE SEPARATOR (Acting as the list "Edge") ---
-            // The separator line acting as a "cap"
+            // --- SEPARATOR ---
             contentPanel.child(UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(1))
                     .surface(Surface.flat(0xFF444444))
                     .margins(Insets.bottom(4)));
         }
 
-        // --- THE SCROLLABLE LIST ---
+        // --- SCROLLABLE LIST ---
         var list = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content());
         this.friendsListContainer = list;
 
@@ -177,53 +183,53 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
     }
 
     private void loadDataAndRefresh() {
-        if (this.minecraft.player == null) return;
-        String uuid = this.minecraft.player.getUUID().toString();
+        if (Minecraft.getInstance().getUser().getName() == null) return;
+        String uuid = Minecraft.getInstance().getUser().getProfileId().toString();
 
-        System.out.println("[FriendsDebug] Fetching data for UUID: " + uuid);
-
-        java.util.concurrent.CompletableFuture.supplyAsync(() -> FriendsApi.getFriends(uuid))
+        CompletableFuture.supplyAsync(() -> FriendsApi.getFriends(uuid))
                 .thenAccept(response -> {
                     if (response != null) {
-                        System.out.println("[FriendsDebug] Received response! Badge count: " + response.incomingBadge());
-                        this.minecraft.execute(() -> this.renderData(response));
-                    } else {
-                        System.out.println("[FriendsDebug] API returned NULL (Check your Worker URL or internet)");
+                        this.friendsData = response;
                     }
-                }).exceptionally(ex -> {
-                    System.out.println("[FriendsDebug] API CRASHED: " + ex.getMessage());
-                    ex.printStackTrace();
-                    return null;
+                });
+
+        CompletableFuture.supplyAsync(() -> FriendsApi.getPendingRequests(uuid))
+                .thenAccept(response -> {
+                    if (response != null) {
+                        this.requestsData = response;
+                        this.minecraft.execute(() -> {
+                            updateBadge();
+                            renderData();
+                        });
+                    }
                 });
     }
 
-    private void renderData(FriendsModels.FriendsListResponse data) {
-        // Existing badge logic...
+    private void updateBadge() {
         LabelComponent rLabel = (LabelComponent) requestsTab.children().get(0);
-        rLabel.text(Component.literal("Requests (" + data.incomingBadge() + ")"));
+        int count = requestsData != null ? requestsData.incomingBadge() : 0;
+        rLabel.text(Component.literal("Requests (" + count + ")"));
+    }
 
+    private void renderData() {
         if (this.friendsListContainer == null) return;
         this.friendsListContainer.clearChildren();
 
         if (isFriendsTab) {
-            int friendCount = (data.friends() != null) ? data.friends().size() : 0;
-            System.out.println("[FriendsDebug] Rendering Friends Tab. Count: " + friendCount);
+            List<FriendsModels.FriendEntry> friends = friendsData != null ? friendsData.friends() : List.of();
 
-            if (friendCount > 0) {
-                for (var friend : data.friends()) {
-                    System.out.println("[FriendsDebug] Found Friend: " + friend.name() + " (" + friend.presence() + ")");
+            if (!friends.isEmpty()) {
+                for (var friend : friends) {
                     this.friendsListContainer.child(createFriendRow(friend));
                 }
             } else {
                 this.addEmptyLabel("No friends yet!");
             }
         } else {
-            int reqCount = (data.requests() != null) ? data.requests().size() : 0;
-            System.out.println("[FriendsDebug] Rendering Requests Tab. Count: " + reqCount);
+            List<FriendsModels.RequestEntry> requests = requestsData != null ? requestsData.all() : List.of();
 
-            if (reqCount > 0) {
-                for (var req : data.requests()) {
-                    System.out.println("[FriendsDebug] Found Request from: " + req.name());
+            if (!requests.isEmpty()) {
+                for (var req : requests) {
                     this.friendsListContainer.child(createRequestRow(req));
                 }
             } else {
@@ -232,7 +238,6 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         }
     }
 
-    // Helper to keep renderData clean
     private void addEmptyLabel(String text) {
         LabelComponent emptyLabel = UIComponents.label(Component.literal(text));
         emptyLabel.horizontalSizing(Sizing.fill(100));
@@ -246,7 +251,6 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         row.verticalAlignment(VerticalAlignment.CENTER);
         row.gap(8);
 
-        // Online/Offline Dot
         int statusColor = friend.presence().equals("OFFLINE") ? 0xFFFF0000 : 0xFF00FF00;
         row.child(UIComponents.label(Component.literal("●")).color(Color.ofArgb(statusColor)));
 
@@ -260,21 +264,17 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         row.verticalAlignment(VerticalAlignment.CENTER);
         row.padding(Insets.horizontal(8));
 
-        // 1. The Name Label
-        // We limit this to 80% so it cannot push the button group off-screen
         LabelComponent nameLabel = UIComponents.label(Component.literal(req.name()));
         nameLabel.horizontalSizing(Sizing.fill(80));
         nameLabel.verticalSizing(Sizing.content());
         row.child(nameLabel);
 
-        // 2. The Button Group
-        // This will now sit comfortably in the remaining 20% of the row
         var buttonGroup = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
         buttonGroup.verticalAlignment(VerticalAlignment.CENTER);
 
         var acceptBtn = UIComponents.button(Component.literal("✔"), b -> {
-            java.util.concurrent.CompletableFuture.runAsync(() ->
-                    FriendsApi.acceptRequest(this.minecraft.player.getUUID().toString(), req.uuid())
+            CompletableFuture.runAsync(() ->
+                    FriendsApi.acceptRequest(Minecraft.getInstance().getUser().getProfileId().toString(), req.uuid())
             ).thenRun(this::loadDataAndRefresh);
         }).sizing(Sizing.fixed(20));
 

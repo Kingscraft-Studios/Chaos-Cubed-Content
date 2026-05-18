@@ -35,6 +35,11 @@ public class FriendsApi {
         return fetchPost(BASE + "/friend/request/name", json, FriendsModels.ActionResponse.class);
     }
 
+    // GET /friend/requests
+    public static FriendsModels.RequestsResponse getPendingRequests(String uuid) {
+        return fetchGet(BASE + "/friend/requests?uuid=" + uuid, FriendsModels.RequestsResponse.class);
+    }
+
     // POST /friend/accept
     public static FriendsModels.ActionResponse acceptRequest(String uuid, String friendUuid) {
         JsonObject json = new JsonObject();
@@ -49,9 +54,10 @@ public class FriendsApi {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
             HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("[FriendsAPI] GET " + url + " → " + response.statusCode() + " " + response.body());
             return GSON.fromJson(response.body(), clazz);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("[FriendsAPI] GET " + url + " failed: " + e.getMessage());
             return null;
         }
     }
@@ -64,9 +70,10 @@ public class FriendsApi {
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                     .build();
             HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("[FriendsAPI] POST " + url + " → " + response.statusCode() + " " + response.body());
             return GSON.fromJson(response.body(), clazz);
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("[FriendsAPI] POST " + url + " failed: " + e.getMessage());
             return null;
         }
     }

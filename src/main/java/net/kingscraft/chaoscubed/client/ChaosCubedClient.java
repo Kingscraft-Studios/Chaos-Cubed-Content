@@ -2,6 +2,7 @@ package net.kingscraft.chaoscubed.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
@@ -11,14 +12,15 @@ import net.kingscraft.chaoscubed.entity.ModEntities;
 import net.kingscraft.chaoscubed.entity.client.sulfurcube.SulfurCubeModel;
 import net.kingscraft.chaoscubed.entity.client.sulfurcube.SulfurCubeRenderer;
 import net.kingscraft.chaoscubed.friends.api.FriendsApi;
+import net.kingscraft.chaoscubed.friends.api.FriendsWebSocketManager;
 import net.kingscraft.chaoscubed.friends.ui.FriendsScreen;
 import net.kingscraft.chaoscubed.particles.ModParticles;
 import net.kingscraft.chaoscubed.particles.SulfurGooProvider;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.User;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import org.lwjgl.glfw.GLFW;
-
-import java.util.concurrent.CompletableFuture;
 
 public class ChaosCubedClient implements ClientModInitializer {
     public static KeyMapping openFriendKey;
@@ -43,40 +45,39 @@ public class ChaosCubedClient implements ClientModInitializer {
             }
         });
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            if (client.player == null) return;
+        ClientLifecycleEvents.CLIENT_STARTED.register(client -> {
+            Minecraft mc = Minecraft.getInstance();
 
-            String uuid = client.player.getUUID().toString();
-            String name = client.player.getName().getString();
+            User session = mc.getUser();
+            if (session != null) {
+                String name = session.getName();
+                String UUID = session.getProfileId().toString();
 
-            System.out.println("[FriendsDebug] Checking database for: " + name);
-
-            java.util.concurrent.CompletableFuture.supplyAsync(() -> FriendsApi.getFriends(uuid))
-                    .thenAccept(response -> {
-                        // If the user doesn't exist, the Worker's error JSON
-                        // causes the 'uuid' or 'friends' fields in our record to be null.
-                        if (response == null || response.uuid()  == null) {
-                            System.out.println("[FriendsDebug] Profile missing. Registering...");
-                            FriendsApi.registerPlayer(uuid, name);
-                        } else {
-                            System.out.println("[FriendsDebug] Profile found for " + response.name());
-                        }
-                    }).exceptionally(ex -> {
-                        // This catches 404s if your API wrapper throws an exception on non-200 codes
-                        System.out.println("[FriendsDebug] Request failed (likely 404). Registering...");
-                        FriendsApi.registerPlayer(uuid, name);
-                        return null;
-                    });
+                java.util.concurrent.CompletableFuture.supplyAsync(() -> FriendsApi.registerPlayer(UUID, name))
+                        .thenAccept(res -> {
+                            System.out.println("[FriendsWS] Registered: " + name);
+                            FriendsWebSocketManager.start(UUID);
+                        }).exceptionally(ex -> {
+                            System.err.println("[FriendsWS] Registration failed: " + ex.getMessage());
+                            return null;
+                        });
+            }
         });
 
+        // Version check on join
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            CompletableFuture.runAsync(() -> {
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
                 client.execute(() -> {
                     if (client.player != null) {
                         VersionChecker.sendUpdateMessage(client.player);
                     }
                 });
             });
+        });
+
+        // Stop WS when the game closes (not on world leave)
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            FriendsWebSocketManager.stop();
         });
     }
 }
