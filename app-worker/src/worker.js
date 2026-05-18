@@ -1,310 +1,436 @@
+const corsHeaders = {
+	"Access-Control-Allow-Origin": "*",
+	"Access-Control-Allow-Headers": "Content-Type",
+	"Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+	"Content-Type": "application/json"
+};
+
+const json = (data, status = 200) =>
+	new Response(JSON.stringify(data), { status, headers: corsHeaders });
+
+/* =====================================================
+   D U R A B L E   O B J E C T
+===================================================== */
+export class FriendsHub {
+	constructor(state, env) {
+		this.state = state;
+		this.env = env;
+
+		// uuid -> websocket
+		this.sessions = new Map();
+
+		// uuid -> last activity timestamp
+		this.lastSeen = new Map();
+
+		// HEARTBEAT CLEANUP LOOP
+		this.state.blockConcurrencyWhile(async () => {
+			this.startHeartbeat();
+		});
+	}
+
+	/* =====================================================
+	   HEARTBEAT WATCHDOG
+	===================================================== */
+	startHeartbeat() {
+		setInterval(async () => {
+			const now = Date.now();
+
+			for (const [uuid, last] of this.lastSeen.entries()) {
+				if (now - last > 20000) { // 20s timeout
+
+					const socket = this.sessions.get(uuid);
+
+					if (socket) {
+						try {
+							socket.close();
+						} catch {}
+					}
+
+					this.sessions.delete(uuid);
+					this.lastSeen.delete(uuid);
+
+					// mark OFFLINE in DB
+					await this.env.DB.prepare(`
+						UPDATE players
+						SET presence = 'OFFLINE',
+						    last_seen = ?
+						WHERE uuid = ?
+					`).bind(now, uuid).run();
+				}
+			}
+		}, 30000);
+	}
+
+	/* =====================================================
+	   MAIN FETCH (WS UPGRADE)
+	===================================================== */
+	async fetch(request) {
+		const url = new URL(request.url);
+
+		if (url.pathname !== "/ws") {
+			return new Response("Not WebSocket route", { status: 404 });
+		}
+
+		if (request.headers.get("Upgrade") !== "websocket") {
+			return new Response("Expected websocket", { status: 426 });
+		}
+
+		const pair = new WebSocketPair();
+		const client = pair[0];
+		const server = pair[1];
+
+		server.accept();
+
+		const connId = crypto.randomUUID();
+
+		server.send(JSON.stringify({
+			type: "connected",
+			connId
+		}));
+
+		/* =====================================================
+		   MESSAGE HANDLER
+		===================================================== */
+		server.addEventListener("message", async (msg) => {
+			try {
+				const data = JSON.parse(msg.data);
+
+				// update activity if uuid exists
+				if (data.uuid) {
+					this.lastSeen.set(data.uuid, Date.now());
+				}
+
+				/* ---------------- LOGIN ---------------- */
+				if (data.type === "login") {
+					const uuid = data.uuid;
+					if (!uuid) return;
+
+					this.sessions.set(uuid, server);
+					this.lastSeen.set(uuid, Date.now());
+
+					await this.env.DB.prepare(`
+						UPDATE players
+						SET presence = 'ONLINE',
+						    last_seen = ?
+						WHERE uuid = ?
+					`).bind(Date.now(), uuid).run();
+
+					server.send(JSON.stringify({
+						type: "login_ok",
+						uuid
+					}));
+
+					return;
+				}
+
+				/* ---------------- PING ---------------- */
+				if (data.type === "ping") {
+					server.send(JSON.stringify({
+						type: "pong",
+						time: Date.now()
+					}));
+					return;
+				}
+
+				/* ---------------- FRIEND REQUEST ---------------- */
+				if (data.type === "friend_request") {
+					const target = this.sessions.get(data.to);
+
+					if (target) {
+						target.send(JSON.stringify({
+							type: "friend_request",
+							from: data.from
+						}));
+					}
+					return;
+				}
+
+				/* ---------------- FRIEND ACCEPT ---------------- */
+				if (data.type === "friend_accept") {
+					const a = this.sessions.get(data.from);
+					const b = this.sessions.get(data.to);
+
+					if (a) {
+						a.send(JSON.stringify({
+							type: "friend_accepted",
+							from: data.to
+						}));
+					}
+
+					if (b) {
+						b.send(JSON.stringify({
+							type: "friend_accepted",
+							from: data.from
+						}));
+					}
+
+					return;
+				}
+
+				/* ---------------- FRIEND REMOVE ---------------- */
+				if (data.type === "friend_remove") {
+					const a = this.sessions.get(data.from);
+					const b = this.sessions.get(data.to);
+
+					if (a) {
+						a.send(JSON.stringify({
+							type: "friend_removed",
+							from: data.to
+						}));
+					}
+
+					if (b) {
+						b.send(JSON.stringify({
+							type: "friend_removed",
+							from: data.from
+						}));
+					}
+
+					return;
+				}
+
+			} catch (err) {
+				server.send(JSON.stringify({
+					type: "error",
+					message: "invalid json"
+				}));
+			}
+		});
+
+		/* =====================================================
+		   CLEAN DISCONNECT
+		===================================================== */
+		server.addEventListener("close", () => {
+			this.handleDisconnect(server);
+		});
+
+		return new Response(null, {
+			status: 101,
+			webSocket: client
+		});
+	}
+
+	/* =====================================================
+	   DISCONNECT HANDLER
+	===================================================== */
+	async handleDisconnect(server) {
+		for (const [uuid, socket] of this.sessions.entries()) {
+			if (socket === server) {
+				this.sessions.delete(uuid);
+				this.lastSeen.delete(uuid);
+
+				const now = Date.now();
+
+				await this.env.DB.prepare(`
+					UPDATE players
+					SET presence = 'OFFLINE',
+					    last_seen = ?
+					WHERE uuid = ?
+				`).bind(now, uuid).run();
+
+				break;
+			}
+		}
+	}
+}
+
+/* =====================================================
+   M A I N   W O R K E R
+===================================================== */
 export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-
-    const headers = {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Content-Type": "application/json"
-    };
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { headers });
-    }
-
-    const json = (body, status = 200) =>
-      new Response(JSON.stringify(body), { status, headers });
-
-    const now = () => Date.now();
-
-    // ---------- NAME NORMALIZATION ----------
-    const normalizeName = (name) => name.trim().toLowerCase();
-
-    const nameKey = (name) => `name:${normalizeName(name)}`;
-    const playerKey = (uuid) => `player:${uuid}`;
-
-    // ---------- HELPERS ----------
-    const getPlayer = async (uuid) => {
-      if (!uuid) return null;
-      const raw = await env.KV.get(playerKey(uuid));
-      return raw ? JSON.parse(raw) : null;
-    };
-
-    const savePlayer = async (p) => {
-      await env.KV.put(playerKey(p.uuid), JSON.stringify(p));
-    };
-
-    const normalize = (arr) => (Array.isArray(arr) ? arr : []);
-    const dedupe = (arr) => [...new Set(arr)];
-    const capBadge = (n) => Math.min(n, 5);
-
-    const isOnline = (p) =>
-      p?.lastSeen && now() - p.lastSeen < 5 * 60 * 1000;
-
-    const presence = (p) => {
-      if (!p) return "OFFLINE";
-      if (!isOnline(p)) return "OFFLINE";
-      if (p.joinableWorld) return "JOINABLE_WORLD";
-      if (p.inWorld) return "IN_WORLD";
-      return "ONLINE";
-    };
-
-    const updateNameIndex = async (oldName, newName, uuid) => {
-      if (oldName) {
-        await env.KV.delete(nameKey(oldName));
-      }
-      await env.KV.put(nameKey(newName), uuid);
-    };
-
-    // ---------- ROOT ----------
-    if (url.pathname === "/") {
-      return json({ status: "ONLINE" });
-    }
-
-    // ---------- REGISTER ----------
-    if (url.pathname === "/register" && request.method === "POST") {
-      const { uuid, name } = await request.json().catch(() => ({}));
-
-      if (!uuid || !name) {
-        return json({ error: "missing uuid or name" }, 400);
-      }
-
-      let player = await getPlayer(uuid);
-      const existed = !!player;
-
-      const cleanName = name.trim();
-
-      if (!player) {
-        player = {
-          uuid,
-          name: cleanName,
-          friends: [],
-          requests: [],
-          outgoingRequests: [],
-          blocked: [],
-          allowRequests: true,
-          inWorld: false,
-          joinableWorld: false,
-          lastSeen: now(),
-          createdAt: now()
-        };
-      } else {
-        const oldName = player.name;
-        player.name = cleanName;
-        player.lastSeen = now();
-
-        await updateNameIndex(oldName, cleanName, uuid);
-      }
-
-      await env.KV.put(nameKey(cleanName), uuid);
-      await savePlayer(player);
-
-      return json({ ok: true, created: !existed });
-    }
-
-    // ---------- RESOLVE NAME ----------
-    const resolveName = async (name) => {
-      if (!name) return null;
-
-      const uuid = await env.KV.get(nameKey(name));
-      if (!uuid) return null;
-
-      return getPlayer(uuid);
-    };
-
-    // ---------- FRIEND REQUEST ----------
-    if (url.pathname === "/friend/request" && request.method === "POST") {
-      const { from, to } = await request.json().catch(() => ({}));
-
-      const a = await getPlayer(from);
-      const b = await getPlayer(to);
-
-      if (!a || !b) return json({ error: "not found" }, 404);
-
-      if (normalize(a.friends).includes(to)) {
-        return json({ error: "already friends" }, 409);
-      }
-
-      b.requests = dedupe([...normalize(b.requests), from]);
-      a.outgoingRequests = dedupe([...normalize(a.outgoingRequests), to]);
-
-      await savePlayer(a);
-      await savePlayer(b);
-
-      return json({ ok: true });
-    }
-
-    // ---------- FRIEND REQUEST BY NAME ----------
-    if (url.pathname === "/friend/request/name" && request.method === "POST") {
-      const { from, toName } = await request.json().catch(() => ({}));
-
-      const a = await getPlayer(from);
-      const b = await resolveName(toName);
-
-      if (!a || !b) return json({ error: "not found" }, 404);
 
-      if (a.friends.includes(b.uuid)) {
-        return json({ error: "already friends" }, 409);
-      }
-
-      b.requests = dedupe([...normalize(b.requests), a.uuid]);
-      a.outgoingRequests = dedupe([...normalize(a.outgoingRequests), b.uuid]);
-
-      await savePlayer(a);
-      await savePlayer(b);
-
-      return json({ ok: true });
-    }
-
-    // ---------- FRIENDS ----------
-    if (url.pathname === "/friends" && request.method === "GET") {
-      const uuid = url.searchParams.get("uuid");
-      const player = await getPlayer(uuid);
-
-      if (!player) return json({});
-
-      const friends = await Promise.all(
-        normalize(player.friends).map(async (id) => {
-          const f = await getPlayer(id);
-          return {
-            uuid: id,
-            name: f?.name || id,
-            presence: presence(f)
-          };
-        })
-      );
-
-      const incoming = await Promise.all(
-        normalize(player.requests).map(async (id) => {
-          const p = await getPlayer(id);
-          return {
-            uuid: id,
-            name: p?.name || id,
-            direction: "incoming",
-            presence: presence(p)
-          };
-        })
-      );
-
-      const outgoing = await Promise.all(
-        normalize(player.outgoingRequests).map(async (id) => {
-          const p = await getPlayer(id);
-          return {
-            uuid: id,
-            name: p?.name || id,
-            direction: "outgoing",
-            presence: presence(p)
-          };
-        })
-      );
-
-      return json({
-        uuid: player.uuid,
-        name: player.name,
-        presence: presence(player),
-        friends,
-        requests: incoming,
-        outgoingRequests: outgoing,
-        incomingBadge: capBadge(normalize(player.requests).length)
-      });
-    }
-
-    // ---------- ACCEPT ----------
-    if (url.pathname === "/friend/accept" && request.method === "POST") {
-      const { uuid, friend } = await request.json().catch(() => ({}));
-
-      const a = await getPlayer(uuid);
-      const b = await getPlayer(friend);
-
-      if (!a || !b) return json({ error: "not found" }, 404);
-
-      a.requests = normalize(a.requests).filter(x => x !== friend);
-      a.outgoingRequests = normalize(a.outgoingRequests).filter(x => x !== friend);
-
-      b.requests = normalize(b.requests).filter(x => x !== uuid);
-      b.outgoingRequests = normalize(b.outgoingRequests).filter(x => x !== uuid);
-
-      a.friends = dedupe([...normalize(a.friends), friend]);
-      b.friends = dedupe([...normalize(b.friends), uuid]);
-
-      await savePlayer(a);
-      await savePlayer(b);
-
-      return json({ ok: true });
-    }
-
-    // ---------- DECLINE ----------
-    if (url.pathname === "/friend/decline" && request.method === "POST") {
-      const { uuid, friend } = await request.json().catch(() => ({}));
-
-      const a = await getPlayer(uuid);
-      const b = await getPlayer(friend);
-
-      if (!a || !b) return json({ error: "not found" }, 404);
-
-      a.requests = normalize(a.requests).filter(x => x !== friend);
-      b.outgoingRequests = normalize(b.outgoingRequests).filter(x => x !== uuid);
-
-      await savePlayer(a);
-      await savePlayer(b);
-
-      return json({ ok: true });
-    }
-
-    // ---------- CANCEL ----------
-    if (url.pathname === "/friend/cancel" && request.method === "POST") {
-      const { uuid, friend } = await request.json().catch(() => ({}));
-
-      const a = await getPlayer(uuid);
-      const b = await getPlayer(friend);
-
-      if (!a || !b) return json({ error: "not found" }, 404);
-
-      a.outgoingRequests = normalize(a.outgoingRequests).filter(x => x !== friend);
-      b.requests = normalize(b.requests).filter(x => x !== uuid);
-
-      await savePlayer(a);
-      await savePlayer(b);
-
-      return json({ ok: true });
-    }
-
-    // ---------- REMOVE FRIEND ----------
-    if (url.pathname === "/friend/remove" && request.method === "POST") {
-      const { uuid, friend } = await request.json().catch(() => ({}));
-
-      const a = await getPlayer(uuid);
-      const b = await getPlayer(friend);
-
-      if (!a || !b) return json({ error: "not found" }, 404);
-
-      a.friends = normalize(a.friends).filter(x => x !== friend);
-      b.friends = normalize(b.friends).filter(x => x !== uuid);
-
-      await savePlayer(a);
-      await savePlayer(b);
-
-      return json({ ok: true });
-    }
-
-    // ---------- STATUS ----------
-    if (url.pathname === "/status" && request.method === "POST") {
-      const body = await request.json().catch(() => ({}));
-
-      const p = await getPlayer(body.uuid);
-      if (!p) return json({ error: "not found" }, 404);
-
-      p.lastSeen = now();
-
-      if (typeof body.inWorld === "boolean") p.inWorld = body.inWorld;
-      if (typeof body.joinableWorld === "boolean") p.joinableWorld = body.joinableWorld;
-
-      await savePlayer(p);
-
-      return json({ ok: true });
-    }
-
-    return new Response("Not found", { status: 404, headers });
-  }
+	async fetch(request, env) {
+
+		const url = new URL(request.url);
+
+		if (request.method === "OPTIONS") {
+			return new Response(null, { headers: corsHeaders });
+		}
+
+		/* =====================================================
+		   WS ROUTE
+		===================================================== */
+		if (url.pathname === "/ws") {
+			const id = env.FRIENDS_HUB.idFromName("global");
+			const stub = env.FRIENDS_HUB.get(id);
+			return stub.fetch(request);
+		}
+
+		/* =====================================================
+		   REGISTER
+		===================================================== */
+		if (url.pathname === "/register" && request.method === "POST") {
+
+			const body = await request.json().catch(() => ({}));
+
+			if (!body.uuid || !body.name) {
+				return json({ error: "missing uuid or name" }, 400);
+			}
+
+			await env.DB
+				.prepare(`
+					INSERT INTO players (uuid, name, created_at, last_seen)
+					VALUES (?, ?, ?, ?)
+					ON CONFLICT(uuid) DO UPDATE SET
+						name = excluded.name,
+						last_seen = excluded.last_seen
+				`)
+				.bind(body.uuid, body.name.trim(), Date.now(), Date.now())
+				.run();
+
+			return json({ ok: true });
+		}
+
+		/* =====================================================
+		   FRIEND REQUEST (HTTP + WS TRIGGER)
+		===================================================== */
+		if (url.pathname === "/friend/request" && request.method === "POST") {
+
+			const body = await request.json().catch(() => ({}));
+
+			await env.DB
+				.prepare(`
+					INSERT INTO friend_relations
+						(sender_uuid, receiver_uuid, status, created_at)
+					VALUES (?, ?, 'PENDING', ?)
+				`)
+				.bind(body.from, body.to, Date.now())
+				.run();
+
+			// WS notify
+			const hub = env.FRIENDS_HUB.get(env.FRIENDS_HUB.idFromName("global"));
+
+			const socket = hub.sessions?.get(body.to);
+			if (socket) {
+				socket.send(JSON.stringify({
+					type: "friend_request",
+					from: body.from
+				}));
+			}
+
+			return json({ ok: true });
+		}
+
+		/* =====================================================
+		   ACCEPT FRIEND REQUEST
+		===================================================== */
+		if (url.pathname === "/friend/accept" && request.method === "POST") {
+
+			const body = await request.json().catch(() => ({}));
+
+			await env.DB
+				.prepare(`
+					UPDATE friend_relations
+					SET status = 'ACCEPTED'
+					WHERE sender_uuid = ?
+					  AND receiver_uuid = ?
+					  AND status = 'PENDING'
+				`)
+				.bind(body.friend, body.uuid)
+				.run();
+
+			const hub = env.FRIENDS_HUB.get(env.FRIENDS_HUB.idFromName("global"));
+
+			const a = hub.sessions?.get(body.friend);
+			const b = hub.sessions?.get(body.uuid);
+
+			if (a) a.send(JSON.stringify({
+				type: "friend_accepted",
+				from: body.uuid
+			}));
+
+			if (b) b.send(JSON.stringify({
+				type: "friend_accepted",
+				from: body.friend
+			}));
+
+			return json({ ok: true });
+		}
+
+		/* =====================================================
+		   REMOVE FRIEND
+		===================================================== */
+		if (url.pathname === "/friend/remove" && request.method === "POST") {
+
+			const body = await request.json().catch(() => ({}));
+
+			await env.DB
+				.prepare(`
+					DELETE FROM friend_relations
+					WHERE (
+						sender_uuid = ? AND receiver_uuid = ?
+					) OR (
+						sender_uuid = ? AND receiver_uuid = ?
+					)
+				`)
+				.bind(body.uuid, body.friend, body.friend, body.uuid)
+				.run();
+
+			const hub = env.FRIENDS_HUB.get(env.FRIENDS_HUB.idFromName("global"));
+
+			const a = hub.sessions?.get(body.uuid);
+			const b = hub.sessions?.get(body.friend);
+
+			if (a) a.send(JSON.stringify({
+				type: "friend_removed",
+				from: body.friend
+			}));
+
+			if (b) b.send(JSON.stringify({
+				type: "friend_removed",
+				from: body.uuid
+			}));
+
+			return json({ ok: true });
+		}
+
+		/* =====================================================
+		   FRIEND LIST
+		===================================================== */
+		if (url.pathname === "/friends" && request.method === "GET") {
+
+			const uuid = url.searchParams.get("uuid");
+
+			const relations = await env.DB
+				.prepare(`
+					SELECT sender_uuid, receiver_uuid, status
+					FROM friend_relations
+					WHERE sender_uuid = ? OR receiver_uuid = ?
+				`)
+				.bind(uuid, uuid)
+				.all();
+
+			const friendList = [];
+
+			for (const r of relations.results || []) {
+
+				if (r.status !== "ACCEPTED") continue;
+
+				const friendId =
+					r.sender_uuid === uuid ? r.receiver_uuid : r.sender_uuid;
+
+				const p = await env.DB
+					.prepare(`
+						SELECT uuid, name, presence
+						FROM players
+						WHERE uuid = ?
+					`)
+					.bind(friendId)
+					.first();
+
+				friendList.push({
+					uuid: friendId,
+					name: p?.name || "Unknown",
+					presence: p?.presence || "OFFLINE"
+				});
+			}
+
+			return json({
+				uuid,
+				friends: friendList
+			});
+		}
+
+		return new Response("Not found", { status: 404, headers: corsHeaders });
+	}
 };

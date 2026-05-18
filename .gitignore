@@ -19,3 +19,4 @@ build
 .idea
 run
 app-worker/node_modules
+app-worker/.wrangler

@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "wrangler": "^4.92.0"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3"
   }
 }
