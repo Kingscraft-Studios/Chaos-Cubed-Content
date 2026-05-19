@@ -114,6 +114,22 @@ export async function getFriends(db, uuid) {
 	return friends;
 }
 
+export async function getAllowRequests(db, uuid) {
+	const row = await db
+		.prepare(`SELECT allow_requests FROM players WHERE uuid = ?`)
+		.bind(uuid)
+		.first();
+	return row ? row.allow_requests : 1;
+}
+
+export async function setAllowRequests(db, uuid, allow) {
+	await db
+		.prepare(`UPDATE players SET allow_requests = ? WHERE uuid = ?`)
+		.bind(allow ? 1 : 0, uuid)
+		.run();
+	return { ok: true };
+}
+
 export async function getPendingRequests(db, uuid) {
 	const [incoming, outgoing] = await Promise.all([
 		db

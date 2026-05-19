@@ -1,5 +1,6 @@
 package net.kingscraft.chaoscubed.mixin;
 
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.kingscraft.chaoscubed.friends.ui.FriendsScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,7 +21,7 @@ import net.minecraft.client.renderer.RenderPipelines;
 @Mixin(TitleScreen.class)
 public abstract class TitleScreenMixin extends Screen {
     @Unique
-    private static final Identifier FRIENDS_ICON = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/friends.png");
+    private static final Identifier FRIENDS_ICON = Identifier.fromNamespaceAndPath(ChaosCubedClient.MODID, "textures/gui/friends/friends.png");
 
     protected TitleScreenMixin(Component title) { super(title); }
 

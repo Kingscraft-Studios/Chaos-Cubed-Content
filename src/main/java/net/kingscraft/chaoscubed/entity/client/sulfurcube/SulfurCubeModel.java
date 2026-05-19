@@ -1,5 +1,6 @@
 package net.kingscraft.chaoscubed.entity.client.sulfurcube;
 
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;
@@ -12,7 +13,7 @@ public class SulfurCubeModel extends EntityModel<SulfurCubeRenderState> {
 
 	public static final ModelLayerLocation LAYER =
 			new ModelLayerLocation(
-					Identifier.fromNamespaceAndPath("chaos_cubed", "sulfur_cube"),
+					Identifier.fromNamespaceAndPath(ChaosCubedClient.MODID, "sulfur_cube"),
 					"main"
 			);
 

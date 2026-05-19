@@ -14,7 +14,7 @@ public class VersionChecker {
     private static boolean updateAvailable = false;
 
     private static final String CURRENT_VERSION = FabricLoader.getInstance()
-            .getModContainer("chaos_cubed")
+            .getModContainer(ChaosCubedClient.MODID)
             .map(c -> c.getMetadata().getVersion().getFriendlyString())
             .orElse("1.0.0");
 

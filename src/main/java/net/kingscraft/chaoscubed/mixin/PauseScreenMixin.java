@@ -1,5 +1,6 @@
 package net.kingscraft.chaoscubed.mixin;
 
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.kingscraft.chaoscubed.friends.ui.FriendsScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -22,7 +23,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class PauseScreenMixin extends Screen {
     protected PauseScreenMixin(Component title) { super(title); }
     @Unique
-    private static final Identifier FRIENDS_ICON = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/friends.png");
+    private static final Identifier FRIENDS_ICON = Identifier.fromNamespaceAndPath(ChaosCubedClient.MODID, "textures/gui/friends/friends.png");
 
     @Inject(at = @At("TAIL"), method = "addFeedbackButtons")
     private static void addFriendsToGrid(Screen screen, GridLayout.RowHelper rowHelper, CallbackInfo ci) {

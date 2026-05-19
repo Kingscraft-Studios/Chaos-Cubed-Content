@@ -1,6 +1,7 @@
 package net.kingscraft.chaoscubed.entity.client.sulfurcube;
 
 import net.kingscraft.chaoscubed.ChaosCubed;
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.kingscraft.chaoscubed.entity.SulfurCubeEntity;
 import net.kingscraft.chaoscubed.entity.properties.CubeBlockProperties;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -41,7 +42,7 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
 
         initialized = true;
 
-        System.out.println("Initializing SulfurCube texture registry...");
+        ChaosCubedClient.LOGGER.info("Initializing SulfurCube texture registry...");
 
         // Concrete Powder
         registerTextureTag(BlockTags.DIRT, Blocks.MYCELIUM, Blocks.MOSS_BLOCK, Blocks.PALE_MOSS_BLOCK);  // Add Grass Block
@@ -71,8 +72,8 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
 
         registerTexture(Blocks.TNT);
 
-        System.out.println("Finished SulfurCube texture registry!");
-        System.out.println("Registered Texture Count: " + REGISTERED_TEXTURES.size());
+        ChaosCubedClient.LOGGER.info("Finished SulfurCube texture registry!");
+        ChaosCubedClient.LOGGER.info("Registered Texture Count: " + REGISTERED_TEXTURES.size());
     }
 
     @Override
@@ -117,7 +118,7 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
 
         // fallback if not registered
         if (!REGISTERED_TEXTURES.contains(block)) {
-            System.out.println("Texture Doesnt Exist for Block: " + block + " Using Default Texture!");
+            ChaosCubedClient.LOGGER.warn("Texture Doesnt Exist for Block: {} Using Default Texture!", block);
             return Identifier.fromNamespaceAndPath(
                     ChaosCubed.MODID,
                     "textures/entity/sulfur_cube.png"
@@ -133,7 +134,7 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
 
     public static void registerTexture(Block block) {
         REGISTERED_TEXTURES.add(block);
-        System.out.println("Added Block: " + block);
+        ChaosCubedClient.LOGGER.info("Added Block: {}", block);
     }
 
     public static void registerTextureTag(
@@ -152,7 +153,7 @@ public class SulfurCubeRenderer extends LivingEntityRenderer<SulfurCubeEntity, S
 
             REGISTERED_TEXTURES.add(block);
 
-            System.out.println("SUCCESSFULLY REGISTERED: " + block);
+            ChaosCubedClient.LOGGER.info("SUCCESSFULLY REGISTERED: {}", block);
         }
     }
 }

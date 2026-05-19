@@ -2,12 +2,14 @@ package net.kingscraft.chaoscubed.friends.api;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.minecraft.client.Minecraft;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -24,13 +26,13 @@ public class FriendsWebSocketManager {
     private static boolean shouldReconnect = false;
     private static int reconnectAttempts = 0;
 
-    private static Runnable onFriendRequest;
-    private static Runnable onFriendAccepted;
-    private static Runnable onFriendRemoved;
+    private static BiConsumer<String, String> onFriendRequest;
+    private static BiConsumer<String, String> onFriendAccepted;
+    private static BiConsumer<String, String> onFriendRemoved;
 
-    public static void setOnFriendRequest(Runnable r) { onFriendRequest = r; }
-    public static void setOnFriendAccepted(Runnable r) { onFriendAccepted = r; }
-    public static void setOnFriendRemoved(Runnable r) { onFriendRemoved = r; }
+    public static void setOnFriendRequest(BiConsumer<String, String> c) { onFriendRequest = c; }
+    public static void setOnFriendAccepted(BiConsumer<String, String> c) { onFriendAccepted = c; }
+    public static void setOnFriendRemoved(BiConsumer<String, String> c) { onFriendRemoved = c; }
 
     /** Start or re-login the WebSocket. Safe to call repeatedly. */
     public static void start(String uuid) {
@@ -57,7 +59,6 @@ public class FriendsWebSocketManager {
         }
         ws = null;
         playerUUID = null;
-        System.out.println("[FriendsWS] Stopped");
     }
 
     // ──────────────────────────────────────────────
@@ -66,14 +67,12 @@ public class FriendsWebSocketManager {
 
     private static void connect() {
         if (ws != null && !ws.isOutputClosed()) return;
-        System.out.println("[FriendsWS] Connecting...");
 
         HttpClient.newHttpClient().newWebSocketBuilder()
                 .buildAsync(URI.create(WS_URL), new GameSocketListener())
                 .thenAccept(webSocket -> {
                     ws = webSocket;
                     reconnectAttempts = 0;
-                    System.out.println("[FriendsWS] Connected, logging in...");
                     sendLoginPacket();
                     startPingLoop();
                 }).exceptionally(throwable -> {
@@ -130,7 +129,7 @@ public class FriendsWebSocketManager {
         }
         int delay = Math.min(1 << reconnectAttempts, MAX_RECONNECT_DELAY);
         reconnectAttempts++;
-        System.out.println("[FriendsWS] Reconnecting in " + delay + "s (attempt " + reconnectAttempts + ")");
+        ChaosCubedClient.LOGGER.info("[FriendsWS] Reconnecting in {}s (attempt {})", delay, reconnectAttempts);
         reconnectExecutor.schedule(FriendsWebSocketManager::connect, delay, TimeUnit.SECONDS);
     }
 
@@ -149,7 +148,6 @@ public class FriendsWebSocketManager {
         @Override
         public CompletionStage<?> onText(WebSocket ws, CharSequence data, boolean last) {
             String msg = data.toString();
-            System.out.println("[FriendsWS] << " + msg);
             Minecraft.getInstance().execute(() -> {
                 try {
                     JsonObject res = GSON.fromJson(msg, JsonObject.class);
@@ -157,19 +155,23 @@ public class FriendsWebSocketManager {
 
                     switch (type) {
                         case "connected" -> {
-                            // connection acknowledged, login will follow
                         }
                         case "login_ok" -> {
-                            System.out.println("[FriendsWS] Login OK for " + playerUUID);
                         }
                         case "friend_request" -> {
-                            if (onFriendRequest != null) onFriendRequest.run();
+                            String from = res.has("from") ? res.get("from").getAsString() : "";
+                            String name = res.has("name") ? res.get("name").getAsString() : from;
+                            if (onFriendRequest != null) onFriendRequest.accept(from, name);
                         }
                         case "friend_accepted" -> {
-                            if (onFriendAccepted != null) onFriendAccepted.run();
+                            String from = res.has("from") ? res.get("from").getAsString() : "";
+                            String name = res.has("name") ? res.get("name").getAsString() : from;
+                            if (onFriendAccepted != null) onFriendAccepted.accept(from, name);
                         }
                         case "friend_removed" -> {
-                            if (onFriendRemoved != null) onFriendRemoved.run();
+                            String from = res.has("from") ? res.get("from").getAsString() : "";
+                            String name = res.has("name") ? res.get("name").getAsString() : from;
+                            if (onFriendRemoved != null) onFriendRemoved.accept(from, name);
                         }
                     }
                 } catch (Exception e) {
@@ -181,7 +183,7 @@ public class FriendsWebSocketManager {
 
         @Override
         public CompletionStage<?> onClose(WebSocket ws, int statusCode, String reason) {
-            System.out.println("[FriendsWS] Disconnected" + (reason.isEmpty() ? "" : ": " + reason));
+            ChaosCubedClient.LOGGER.info("[FriendsWS] Disconnected{}", reason.isEmpty() ? "" : ": " + reason);
             shutdownPing();
             scheduleReconnect();
             return WebSocket.Listener.super.onClose(ws, statusCode, reason);

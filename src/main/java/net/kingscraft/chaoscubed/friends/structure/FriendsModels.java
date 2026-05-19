@@ -68,4 +68,10 @@ public class FriendsModels {
             boolean created,
             String error
     ) {}
+
+    // Matches GET /allow-requests response
+    public record AllowRequestsResponse(
+            String uuid,
+            boolean allow
+    ) {}
 }

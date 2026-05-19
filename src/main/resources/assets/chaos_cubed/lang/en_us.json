@@ -63,5 +63,8 @@
  "subtitles.chaos_cubed.sulfur_cube_absorb": "Sulfur Cube absorbs a block",
  "subtitles.chaos_cubed.sulfur_cube_squish": "Sulfur Cube lands",
  "subtitles.chaos_cubed.sulfur_cube_hit": "Sulfur Cube hurts",
- "subtitles.chaos_cubed.sulfur_cube_eject": "Sulfur Cube ejects a block"
+ "subtitles.chaos_cubed.sulfur_cube_eject": "Sulfur Cube ejects a block",
+
+ "category.chaos_cubed.friends": "Chaos Cubed: Friends Panel",
+ "key.chaos_cubed.open_friends" : "Open Friends List"
 }

@@ -2,6 +2,7 @@ package net.kingscraft.chaoscubed.friends.api;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.kingscraft.chaoscubed.friends.structure.FriendsModels;
 
 import java.net.URI;
@@ -48,16 +49,29 @@ public class FriendsApi {
         return fetchPost(BASE + "/friend/accept", json, FriendsModels.ActionResponse.class);
     }
 
+    // GET /allow-requests
+    public static FriendsModels.AllowRequestsResponse getAllowRequests(String uuid) {
+        return fetchGet(BASE + "/allow-requests?uuid=" + uuid, FriendsModels.AllowRequestsResponse.class);
+    }
+
+    // POST /allow-requests
+    public static FriendsModels.ActionResponse setAllowRequests(String uuid, boolean allow) {
+        JsonObject json = new JsonObject();
+        json.addProperty("uuid", uuid);
+        json.addProperty("allow", allow);
+        return fetchPost(BASE + "/allow-requests", json, FriendsModels.ActionResponse.class);
+    }
+
     // --- GENERIC FETCH HELPERS ---
 
     private static <T> T fetchGet(String url, Class<T> clazz) {
         try {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
             HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("[FriendsAPI] GET " + url + " → " + response.statusCode() + " " + response.body());
+            ChaosCubedClient.LOGGER.info("[FriendsAPI] GET {} → {} {}", url, response.statusCode(), response.body());
             return GSON.fromJson(response.body(), clazz);
         } catch (Exception e) {
-            System.err.println("[FriendsAPI] GET " + url + " failed: " + e.getMessage());
+            ChaosCubedClient.LOGGER.error("[FriendsAPI] GET {} failed: {}", url, e.getMessage());
             return null;
         }
     }
@@ -70,10 +84,10 @@ public class FriendsApi {
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                     .build();
             HttpResponse<String> response = CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("[FriendsAPI] POST " + url + " → " + response.statusCode() + " " + response.body());
+            ChaosCubedClient.LOGGER.info("[FriendsAPI] POST {} → {} {}", url, response.statusCode(), response.body());
             return GSON.fromJson(response.body(), clazz);
         } catch (Exception e) {
-            System.err.println("[FriendsAPI] POST " + url + " failed: " + e.getMessage());
+            ChaosCubedClient.LOGGER.error("[FriendsAPI] POST {} failed: {}", url, e.getMessage());
             return null;
         }
     }

@@ -20,10 +20,18 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.renderer.entity.EntityRenderers;
+import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ChaosCubedClient implements ClientModInitializer {
+    public static final String MODID = "chaos_cubed";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MODID);
     public static KeyMapping openFriendKey;
+    public static final KeyMapping.Category FRIENDS_CATEGORY = KeyMapping.Category.register(
+            Identifier.fromNamespaceAndPath(MODID, "friends")
+    );
 
     @Override
     public void onInitializeClient() {
@@ -36,7 +44,7 @@ public class ChaosCubedClient implements ClientModInitializer {
                 "key.chaos_cubed.open_friends",
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_O,
-                KeyMapping.Category.MULTIPLAYER
+                FRIENDS_CATEGORY
         ));
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -55,10 +63,10 @@ public class ChaosCubedClient implements ClientModInitializer {
 
                 java.util.concurrent.CompletableFuture.supplyAsync(() -> FriendsApi.registerPlayer(UUID, name))
                         .thenAccept(res -> {
-                            System.out.println("[FriendsWS] Registered: " + name);
+                            LOGGER.info("[FriendsWS] Registered: {}", name);
                             FriendsWebSocketManager.start(UUID);
                         }).exceptionally(ex -> {
-                            System.err.println("[FriendsWS] Registration failed: " + ex.getMessage());
+                            LOGGER.error("[FriendsWS] Registration failed: {}", ex.getMessage());
                             return null;
                         });
             }

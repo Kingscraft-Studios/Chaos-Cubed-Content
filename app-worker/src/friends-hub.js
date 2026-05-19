@@ -128,34 +128,80 @@ export class FriendsHub {
 	async notifyFriendRequest(from, to) {
 		const target = this.sessions.get(to);
 		if (target) {
-			target.send(JSON.stringify({ type: "friend_request", from }));
+			const fromPlayer = await this.env.DB
+				.prepare("SELECT name FROM players WHERE uuid = ?")
+				.bind(from).first();
+			target.send(JSON.stringify({
+				type: "friend_request",
+				from,
+				name: fromPlayer?.name || from
+			}));
 			return { notified: true };
 		}
 		return { notified: false };
 	}
 
 	async notifyFriendAccept(a, b) {
+		const [playerA, playerB] = await Promise.all([
+			this.env.DB.prepare("SELECT name FROM players WHERE uuid = ?").bind(a).first(),
+			this.env.DB.prepare("SELECT name FROM players WHERE uuid = ?").bind(b).first()
+		]);
+
 		const sessionA = this.sessions.get(a);
 		const sessionB = this.sessions.get(b);
 
 		if (sessionA) {
-			sessionA.send(JSON.stringify({ type: "friend_accepted", from: b }));
+			sessionA.send(JSON.stringify({
+				type: "friend_accepted",
+				from: b,
+				name: playerB?.name || b
+			}));
 		}
 		if (sessionB) {
-			sessionB.send(JSON.stringify({ type: "friend_accepted", from: a }));
+			sessionB.send(JSON.stringify({
+				type: "friend_accepted",
+				from: a,
+				name: playerA?.name || a
+			}));
 		}
 	}
 
 	async notifyFriendRemove(a, b) {
+		const [playerA, playerB] = await Promise.all([
+			this.env.DB.prepare("SELECT name FROM players WHERE uuid = ?").bind(a).first(),
+			this.env.DB.prepare("SELECT name FROM players WHERE uuid = ?").bind(b).first()
+		]);
+
 		const sessionA = this.sessions.get(a);
 		const sessionB = this.sessions.get(b);
 
 		if (sessionA) {
-			sessionA.send(JSON.stringify({ type: "friend_removed", from: b }));
+			sessionA.send(JSON.stringify({
+				type: "friend_removed",
+				from: b,
+				name: playerB?.name || b
+			}));
 		}
 		if (sessionB) {
-			sessionB.send(JSON.stringify({ type: "friend_removed", from: a }));
+			sessionB.send(JSON.stringify({
+				type: "friend_removed",
+				from: a,
+				name: playerA?.name || a
+			}));
 		}
+	}
+
+	async notifyAllowRequests(uuid, allow) {
+		const target = this.sessions.get(uuid);
+		if (target) {
+			target.send(JSON.stringify({
+				type: "allow_requests_updated",
+				uuid,
+				allow
+			}));
+			return { notified: true };
+		}
+		return { notified: false };
 	}
 
 	getOnlineStatus(uuid) {
@@ -194,6 +240,11 @@ export class FriendsHub {
 				const uuid = url.searchParams.get("uuid");
 				if (!uuid) return error("missing uuid");
 				return json(this.getOnlineStatus(uuid));
+			}
+			case "/rpc/notify-allow-requests": {
+				if (request.method !== "POST") break;
+				const body = await request.json();
+				return json(await this.notifyAllowRequests(body.uuid, body.allow));
 			}
 		}
 

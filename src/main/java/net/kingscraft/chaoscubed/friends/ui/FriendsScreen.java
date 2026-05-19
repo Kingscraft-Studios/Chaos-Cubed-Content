@@ -1,21 +1,30 @@
 package net.kingscraft.chaoscubed.friends.ui;
 
 import io.wispforest.owo.ui.base.BaseOwoScreen;
+import io.wispforest.owo.ui.component.ButtonComponent;
 import io.wispforest.owo.ui.component.LabelComponent;
 import io.wispforest.owo.ui.component.TextBoxComponent;
 import io.wispforest.owo.ui.component.UIComponents;
 import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.container.UIContainers;
 import io.wispforest.owo.ui.core.*;
+import io.wispforest.owo.ui.util.NinePatchTexture;
+import net.kingscraft.chaoscubed.client.ChaosCubedClient;
 import net.kingscraft.chaoscubed.friends.api.FriendsApi;
 import net.kingscraft.chaoscubed.friends.api.FriendsWebSocketManager;
 import net.kingscraft.chaoscubed.friends.structure.FriendsModels;
+import net.kingscraft.chaoscubed.friends.ui.toasts.SkinCache;
+import net.kingscraft.chaoscubed.friends.ui.toasts.ToastManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
@@ -27,6 +36,10 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
     private FriendsModels.FriendsListResponse friendsData;
     private FriendsModels.RequestsResponse requestsData;
+
+    private static final Identifier ACCEPT_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/accept.png");
+    private static final Identifier ACCEPT_HIGHLIGHTED_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/accept_highlighted.png");
+    private static final Identifier SEND_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/draft_report.png");
 
     @Override
     protected @NotNull OwoUIAdapter<FlowLayout> createAdapter() {
@@ -70,20 +83,41 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
         rootComponent.child(contentPanel);
 
-        // --- 3. WIRE WEBSOCKET EVENTS TO AUTO-REFRESH ---
-        FriendsWebSocketManager.setOnFriendRequest(this::onFriendEvent);
-        FriendsWebSocketManager.setOnFriendAccepted(this::onFriendEvent);
-        FriendsWebSocketManager.setOnFriendRemoved(this::onFriendEvent);
+        // --- 3. WIRE WEBSOCKET EVENTS TO AUTO-REFRESH + TOASTS ---
+        FriendsWebSocketManager.setOnFriendRequest(onFriendRequest);
+        FriendsWebSocketManager.setOnFriendAccepted(onFriendAccepted);
+        FriendsWebSocketManager.setOnFriendRemoved(onFriendRemoved);
 
         refreshUI();
         loadDataAndRefresh();
     }
 
-    private void onFriendEvent() {
-        if (this.minecraft != null) {
-            this.minecraft.execute(this::loadDataAndRefresh);
-        }
-    }
+    private final BiConsumer<String, String> onFriendRequest = (uuid, name) -> {
+        if (this.minecraft == null) return;
+        SkinCache.preload(uuid, name);
+        this.minecraft.execute(() -> {
+            ToastManager.showToast(uuid, name, name + " sent you a request");
+            loadDataAndRefresh();
+        });
+    };
+
+    private final BiConsumer<String, String> onFriendAccepted = (uuid, name) -> {
+        if (this.minecraft == null) return;
+        SkinCache.preload(uuid, name);
+        this.minecraft.execute(() -> {
+            ToastManager.showToast(uuid, name, "You are now friends with " + name);
+            loadDataAndRefresh();
+        });
+    };
+
+    private final BiConsumer<String, String> onFriendRemoved = (uuid, name) -> {
+        if (this.minecraft == null) return;
+        SkinCache.preload(uuid, name);
+        this.minecraft.execute(() -> {
+            ToastManager.showToast(uuid, name, name + " is no longer your friend");
+            loadDataAndRefresh();
+        });
+    };
 
     private void refreshUI() {
         updateTabVisuals();
@@ -127,7 +161,7 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
             searchRow.verticalAlignment(VerticalAlignment.CENTER);
             searchRow.gap(4);
 
-            TextBoxComponent searchBar = UIComponents.textBox(Sizing.fill(70));
+            TextBoxComponent searchBar = UIComponents.textBox(Sizing.expand(100));
             searchBar.setMaxLength(16);
             searchBar.setSuggestion("Enter Profile Name");
 
@@ -141,19 +175,38 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
             searchRow.child(searchBar);
 
-            var sendBtn = UIComponents.button(Component.literal("Send"), b -> {
+            var sendBtn = UIComponents.button(Component.literal(""), b -> {
                 String targetName = searchBar.getValue();
                 if (!targetName.isEmpty()) {
-                    CompletableFuture.supplyAsync(() ->
-                            FriendsApi.sendFriendRequestByName(Minecraft.getInstance().getUser().getProfileId().toString(), targetName)
-                    ).thenAccept(res -> {
-                        this.minecraft.execute(() -> {
-                            searchBar.text("");
-                            loadDataAndRefresh();
-                        });
-                    });
+                    String myUuid = Minecraft.getInstance().getUser().getProfileId().toString();
+                    CompletableFuture.supplyAsync(() -> FriendsApi.sendFriendRequestByName(myUuid, targetName))
+                            .thenAccept(res -> {
+                                this.minecraft.execute(() -> {
+                                    if (res == null || !res.ok()) {
+                                        String err = res != null ? res.error() : "Network";
+                                        ChaosCubedClient.LOGGER.error("[FriendsUI] Send request failed: {}", err);
+                                        ToastManager.showErrorToast(err);
+                                        return;
+                                    }
+                                    searchBar.text("");
+                                    loadDataAndRefresh();
+                                    ToastManager.showToast("Sent request to " + targetName);
+                                });
+                            });
                 }
-            }).sizing(Sizing.fixed(40), Sizing.fixed(20));
+            }).renderer((graphics, button, delta) -> {
+                Identifier bg = button.active()
+                        ? button.isHoveredOrFocused() ? ButtonComponent.HOVERED_TEXTURE : ButtonComponent.ACTIVE_TEXTURE
+                        : ButtonComponent.DISABLED_TEXTURE;
+                NinePatchTexture.draw(bg, graphics, button.getX(), button.getY(), button.getWidth(), button.getHeight());
+                int pad = (button.getWidth() - 15) / 2;
+                graphics.blit(RenderPipelines.GUI_TEXTURED, SEND_TEX,
+                        button.getX() + pad, button.getY() + pad,
+                        0.0F, 0.0F,
+                        15, 15,
+                        15, 15,
+                        0xFFFFFFFF);
+            }).sizing(Sizing.fixed(20));
 
             sendBtn.margins(Insets.right(2));
             searchRow.child(sendBtn);
@@ -190,6 +243,9 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
                 .thenAccept(response -> {
                     if (response != null) {
                         this.friendsData = response;
+                        for (var f : response.friends()) {
+                            SkinCache.preload(f.uuid(), f.name());
+                        }
                     }
                 });
 
@@ -197,6 +253,9 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
                 .thenAccept(response -> {
                     if (response != null) {
                         this.requestsData = response;
+                        for (var r : response.all()) {
+                            SkinCache.preload(r.uuid(), r.name());
+                        }
                         this.minecraft.execute(() -> {
                             updateBadge();
                             renderData();
@@ -272,15 +331,44 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         var buttonGroup = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
         buttonGroup.verticalAlignment(VerticalAlignment.CENTER);
 
-        var acceptBtn = UIComponents.button(Component.literal("✔"), b -> {
-            CompletableFuture.runAsync(() ->
-                    FriendsApi.acceptRequest(Minecraft.getInstance().getUser().getProfileId().toString(), req.uuid())
-            ).thenRun(this::loadDataAndRefresh);
+        var acceptBtn = UIComponents.button(Component.literal(""), b -> {
+            String myUuid = Minecraft.getInstance().getUser().getProfileId().toString();
+            CompletableFuture.supplyAsync(() -> FriendsApi.acceptRequest(myUuid, req.uuid()))
+                    .thenAccept(res -> this.minecraft.execute(() -> {
+                        if (res == null || !res.ok()) {
+                            String err = res != null ? res.error() : "Network";
+                            ChaosCubedClient.LOGGER.error("[FriendsUI] Accept failed: {}", err);
+                            ToastManager.showErrorToast(err);
+                            return;
+                        }
+                        loadDataAndRefresh();
+                    }));
+        }).renderer((graphics, button, delta) -> {
+            Identifier bg = button.active()
+                    ? button.isHoveredOrFocused() ? ButtonComponent.HOVERED_TEXTURE : ButtonComponent.ACTIVE_TEXTURE
+                    : ButtonComponent.DISABLED_TEXTURE;
+            NinePatchTexture.draw(bg, graphics, button.getX(), button.getY(), button.getWidth(), button.getHeight());
+            Identifier tex = button.isHoveredOrFocused() ? ACCEPT_HIGHLIGHTED_TEX : ACCEPT_TEX;
+            int pad = (button.getWidth() - 18) / 2;
+            graphics.blit(RenderPipelines.GUI_TEXTURED, tex,
+                    button.getX() + pad, button.getY() + pad,
+                    0.0F, 0.0F,
+                    18, 18,
+                    18, 18,
+                    0xFFFFFFFF);
         }).sizing(Sizing.fixed(20));
 
         buttonGroup.child(acceptBtn);
         row.child(buttonGroup);
 
         return row;
+    }
+
+    @Override
+    public void renderBackground(GuiGraphics guiGraphics, int mouseX, int mouseY, float delta) {
+        if (this.minecraft != null && this.minecraft.level == null) {
+            this.renderPanorama(guiGraphics, delta);
+        }
+        super.renderBackground(guiGraphics, mouseX, mouseY, delta);
     }
 }

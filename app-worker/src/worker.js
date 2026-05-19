@@ -213,6 +213,43 @@ export default {
 			}
 		}
 
+		/* ---- GET /allow-requests ---- */
+
+		if (url.pathname === "/allow-requests" && request.method === "GET") {
+			const uuid = url.searchParams.get("uuid");
+			if (!validateUUID(uuid)) return error("invalid uuid", 400);
+
+			try {
+				const allow = await db.getAllowRequests(env.DB, uuid);
+				return json({ uuid, allow: allow === 1 || allow === true });
+			} catch (e) {
+				return error("failed to fetch allow-requests", 500);
+			}
+		}
+
+		/* ---- POST /allow-requests ---- */
+
+		if (url.pathname === "/allow-requests" && request.method === "POST") {
+			const body = await parseBody(request);
+			if (!body) return error("invalid json", 400);
+			if (!validateUUID(body.uuid)) return error("invalid uuid", 400);
+			if (typeof body.allow !== "boolean") return error("allow must be boolean", 400);
+
+			try {
+				await db.setAllowRequests(env.DB, body.uuid, body.allow);
+
+				const hub = getHubStub(env);
+				await rpc(hub, "/rpc/notify-allow-requests", {
+					uuid: body.uuid,
+					allow: body.allow
+				});
+
+				return json({ ok: true });
+			} catch (e) {
+				return error("failed to set allow-requests", 500);
+			}
+		}
+
 		return error("Not found", 404);
 	}
 };

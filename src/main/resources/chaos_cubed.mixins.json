@@ -7,9 +7,11 @@
     "ServerLevelExplosionMixin"
   ],
   "client": [
+    "OnlineScreenMixin",
     "PauseScreenMixin",
     "ScreenAccessor",
-    "TitleScreenMixin"
+    "TitleScreenMixin",
+    "SharedConstantMixin"
   ],
   "injectors": {
     "defaultRequire": 1
