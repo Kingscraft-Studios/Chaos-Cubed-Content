@@ -6,7 +6,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -25,13 +24,12 @@ public abstract class PauseScreenMixin extends Screen {
     @Unique
     private static final Identifier FRIENDS_ICON = Identifier.fromNamespaceAndPath(ChaosCubedClient.MODID, "textures/gui/friends/friends.png");
 
-    @Inject(at = @At("TAIL"), method = "addFeedbackButtons")
-    private static void addFriendsToGrid(Screen screen, GridLayout.RowHelper rowHelper, CallbackInfo ci) {
-        int buttonX = screen.width / 2 + 104;
+    @Inject(method = "createPauseMenu", at = @At("TAIL"))
+    private void addFriendsButton(CallbackInfo ci) {
+        int buttonX = this.width / 2 + 104;
+        int buttonY = this.height / 4 + 48 + 12 + 1 - 5;
 
-        int buttonY = screen.height / 4 + 48 + 12 + 1 - 5;
-
-        ((ScreenAccessor)screen).invokeAddRenderableWidget(new FriendsIconButton(buttonX, buttonY));
+        this.addRenderableWidget(new FriendsIconButton(buttonX, buttonY));
     }
 
     @Unique

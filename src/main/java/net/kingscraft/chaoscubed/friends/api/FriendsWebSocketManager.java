@@ -29,10 +29,12 @@ public class FriendsWebSocketManager {
     private static BiConsumer<String, String> onFriendRequest;
     private static BiConsumer<String, String> onFriendAccepted;
     private static BiConsumer<String, String> onFriendRemoved;
+    private static BiConsumer<String, String> onFriendRejected;
 
     public static void setOnFriendRequest(BiConsumer<String, String> c) { onFriendRequest = c; }
     public static void setOnFriendAccepted(BiConsumer<String, String> c) { onFriendAccepted = c; }
     public static void setOnFriendRemoved(BiConsumer<String, String> c) { onFriendRemoved = c; }
+    public static void setOnFriendRejected(BiConsumer<String, String> c) { onFriendRejected = c; }
 
     /** Start or re-login the WebSocket. Safe to call repeatedly. */
     public static void start(String uuid) {
@@ -172,6 +174,11 @@ public class FriendsWebSocketManager {
                             String from = res.has("from") ? res.get("from").getAsString() : "";
                             String name = res.has("name") ? res.get("name").getAsString() : from;
                             if (onFriendRemoved != null) onFriendRemoved.accept(from, name);
+                        }
+                        case "friend_rejected" -> {
+                            String from = res.has("from") ? res.get("from").getAsString() : "";
+                            String name = res.has("name") ? res.get("name").getAsString() : from;
+                            if (onFriendRejected != null) onFriendRejected.accept(from, name);
                         }
                     }
                 } catch (Exception e) {

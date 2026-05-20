@@ -185,6 +185,36 @@ export default {
 			}
 		}
 
+		/* ---- POST /friend/reject ---- */
+
+		if (url.pathname === "/friend/reject" && request.method === "POST") {
+			const body = await parseBody(request);
+			if (!body) return error("invalid json", 400);
+
+			if (!validateUUID(body.uuid) || !validateUUID(body.friend)) {
+				return error("invalid uuid(s)", 400);
+			}
+
+			try {
+				const result = await db.rejectFriendRequest(
+					env.DB,
+					body.uuid,
+					body.friend
+				);
+				if (result.error) return error(result.error, 404);
+
+				const hub = getHubStub(env);
+				await rpc(hub, "/rpc/notify-reject", {
+					a: body.uuid,
+					b: body.friend
+				});
+
+				return json({ ok: true });
+			} catch (e) {
+				return error("reject failed", 500);
+			}
+		}
+
 		/* ---- GET /friends ---- */
 
 		if (url.pathname === "/friends" && request.method === "GET") {
@@ -247,6 +277,30 @@ export default {
 				return json({ ok: true });
 			} catch (e) {
 				return error("failed to set allow-requests", 500);
+			}
+		}
+
+		/* ---- POST /presence/world ---- */
+
+		if (url.pathname === "/presence/world" && request.method === "POST") {
+			const body = await parseBody(request);
+			if (!body) return error("invalid json", 400);
+			if (!validateUUID(body.uuid)) return error("invalid uuid", 400);
+			if (![0, 1, 2].includes(body.inWorld)) return error("inWorld must be 0, 1, or 2", 400);
+
+			try {
+				const result = await db.updateInWorld(env.DB, body.uuid, body.inWorld, body.server || null);
+
+				const hub = getHubStub(env);
+				await rpc(hub, "/rpc/notify-presence", {
+					uuid: body.uuid,
+					presence: result.presence,
+					server: body.server || null
+				});
+
+				return json({ ok: true });
+			} catch (e) {
+				return error("update failed", 500);
 			}
 		}
 

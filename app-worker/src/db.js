@@ -85,6 +85,23 @@ export async function removeFriend(db, uuid, friend) {
 	return { ok: true };
 }
 
+export async function rejectFriendRequest(db, uuid, friend) {
+	const result = await db
+		.prepare(`
+			DELETE FROM friend_relations
+			WHERE ((sender_uuid = ? AND receiver_uuid = ?) OR (sender_uuid = ? AND receiver_uuid = ?))
+			  AND status = 'PENDING'
+		`)
+		.bind(uuid, friend, friend, uuid)
+		.run();
+
+	if (result.changes === 0) {
+		return { error: "no pending request found" };
+	}
+
+	return { ok: true };
+}
+
 export async function getFriends(db, uuid) {
 	const relations = await db
 		.prepare(`
@@ -112,6 +129,24 @@ export async function getFriends(db, uuid) {
 	}
 
 	return friends;
+}
+
+export async function updateInWorld(db, uuid, inWorld, server) {
+	let presence;
+	if (inWorld === 1) presence = "IN_WORLD";
+	else if (inWorld === 2) presence = "IN_SERVER";
+	else presence = "ONLINE";
+
+	await db
+		.prepare(`
+			UPDATE players
+			SET in_world = ?, current_server = ?, presence = ?
+			WHERE uuid = ?
+		`)
+		.bind(inWorld, server, presence, uuid)
+		.run();
+
+	return { ok: true, presence };
 }
 
 export async function getAllowRequests(db, uuid) {

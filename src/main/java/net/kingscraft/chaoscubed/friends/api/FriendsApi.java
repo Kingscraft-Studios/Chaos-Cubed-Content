@@ -49,6 +49,22 @@ public class FriendsApi {
         return fetchPost(BASE + "/friend/accept", json, FriendsModels.ActionResponse.class);
     }
 
+    // POST /friend/reject
+    public static FriendsModels.ActionResponse rejectRequest(String uuid, String friendUuid) {
+        JsonObject json = new JsonObject();
+        json.addProperty("uuid", uuid);
+        json.addProperty("friend", friendUuid);
+        return fetchPost(BASE + "/friend/reject", json, FriendsModels.ActionResponse.class);
+    }
+
+    // POST /friend/remove
+    public static FriendsModels.ActionResponse removeFriend(String uuid, String friendUuid) {
+        JsonObject json = new JsonObject();
+        json.addProperty("uuid", uuid);
+        json.addProperty("friend", friendUuid);
+        return fetchPost(BASE + "/friend/remove", json, FriendsModels.ActionResponse.class);
+    }
+
     // GET /allow-requests
     public static FriendsModels.AllowRequestsResponse getAllowRequests(String uuid) {
         return fetchGet(BASE + "/allow-requests?uuid=" + uuid, FriendsModels.AllowRequestsResponse.class);
@@ -60,6 +76,15 @@ public class FriendsApi {
         json.addProperty("uuid", uuid);
         json.addProperty("allow", allow);
         return fetchPost(BASE + "/allow-requests", json, FriendsModels.ActionResponse.class);
+    }
+
+    // POST /presence/world
+    public static FriendsModels.ActionResponse updateInWorld(String uuid, int inWorld, String server) {
+        JsonObject json = new JsonObject();
+        json.addProperty("uuid", uuid);
+        json.addProperty("inWorld", inWorld);
+        if (server != null) json.addProperty("server", server);
+        return fetchPost(BASE + "/presence/world", json, FriendsModels.ActionResponse.class);
     }
 
     // --- GENERIC FETCH HELPERS ---

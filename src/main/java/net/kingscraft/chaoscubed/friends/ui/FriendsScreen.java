@@ -17,14 +17,17 @@ import net.kingscraft.chaoscubed.friends.ui.toasts.SkinCache;
 import net.kingscraft.chaoscubed.friends.ui.toasts.ToastManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.PlayerFaceRenderer;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.PlayerSkin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
 
@@ -40,6 +43,10 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
     private static final Identifier ACCEPT_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/accept.png");
     private static final Identifier ACCEPT_HIGHLIGHTED_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/accept_highlighted.png");
     private static final Identifier SEND_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/draft_report.png");
+    private static final Identifier REJECT_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/reject.png");
+    private static final Identifier REJECT_HIGHLIGHTED_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/reject_highlighted.png");
+    private static final Identifier REMOVE_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/remove.png");
+    private static final Identifier CANCEL_TEX = Identifier.fromNamespaceAndPath("chaos_cubed", "textures/gui/friends/cancel.png");
 
     @Override
     protected @NotNull OwoUIAdapter<FlowLayout> createAdapter() {
@@ -75,7 +82,7 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         rootComponent.child(tabs);
 
         // --- 2. MAIN CONTENT BOX ---
-        contentPanel = UIContainers.verticalFlow(Sizing.fixed(200), Sizing.fill(70));
+        contentPanel = UIContainers.verticalFlow(Sizing.fixed(200), Sizing.fill(80));
         contentPanel.surface(Surface.flat(0xFF151515).and(Surface.outline(0xFFFFFFFF)));
         contentPanel.padding(Insets.of(16));
         contentPanel.margins(Insets.top(-1));
@@ -87,6 +94,7 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         FriendsWebSocketManager.setOnFriendRequest(onFriendRequest);
         FriendsWebSocketManager.setOnFriendAccepted(onFriendAccepted);
         FriendsWebSocketManager.setOnFriendRemoved(onFriendRemoved);
+        FriendsWebSocketManager.setOnFriendRejected(onFriendRejected);
 
         refreshUI();
         loadDataAndRefresh();
@@ -115,6 +123,14 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         SkinCache.preload(uuid, name);
         this.minecraft.execute(() -> {
             ToastManager.showToast(uuid, name, name + " is no longer your friend");
+            loadDataAndRefresh();
+        });
+    };
+
+    private final BiConsumer<String, String> onFriendRejected = (uuid, name) -> {
+        if (this.minecraft == null) return;
+        this.minecraft.execute(() -> {
+            ToastManager.showToast("Request from " + name + " was declined");
             loadDataAndRefresh();
         });
     };
@@ -246,6 +262,7 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
                         for (var f : response.friends()) {
                             SkinCache.preload(f.uuid(), f.name());
                         }
+                        this.minecraft.execute(this::renderData);
                     }
                 });
 
@@ -285,11 +302,30 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
                 this.addEmptyLabel("No friends yet!");
             }
         } else {
-            List<FriendsModels.RequestEntry> requests = requestsData != null ? requestsData.all() : List.of();
+            var incoming = requestsData != null ? requestsData.incoming() : List.<FriendsModels.RequestEntry>of();
+            var outgoing = requestsData != null ? requestsData.outgoing() : List.<FriendsModels.RequestEntry>of();
 
-            if (!requests.isEmpty()) {
-                for (var req : requests) {
-                    this.friendsListContainer.child(createRequestRow(req));
+            if (!incoming.isEmpty() || !outgoing.isEmpty()) {
+                for (var req : incoming) {
+                    this.friendsListContainer.child(createRequestRow(
+                            new FriendsModels.RequestEntry(req.uuid(), req.name(), "incoming", req.presence())));
+                }
+
+                if (!incoming.isEmpty() && !outgoing.isEmpty()) {
+                    var sep = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(1))
+                            .surface(Surface.flat(0xFF444444))
+                            .margins(Insets.vertical(4));
+                    this.friendsListContainer.child(sep);
+                    LabelComponent sentLabel = UIComponents.label(Component.literal("--- Sent Requests ---"));
+                    sentLabel.color(Color.ofRgb(0x888888));
+                    sentLabel.horizontalSizing(Sizing.fill(100));
+                    sentLabel.horizontalTextAlignment(HorizontalAlignment.CENTER);
+                    this.friendsListContainer.child(sentLabel);
+                }
+
+                for (var req : outgoing) {
+                    this.friendsListContainer.child(createRequestRow(
+                            new FriendsModels.RequestEntry(req.uuid(), req.name(), "outgoing", req.presence())));
                 }
             } else {
                 this.addEmptyLabel("No pending requests.");
@@ -305,62 +341,165 @@ public class FriendsScreen extends BaseOwoScreen<FlowLayout> {
         this.friendsListContainer.child(emptyLabel);
     }
 
-    private FlowLayout createFriendRow(FriendsModels.FriendEntry friend) {
-        var row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(25));
-        row.verticalAlignment(VerticalAlignment.CENTER);
-        row.gap(8);
-
-        int statusColor = friend.presence().equals("OFFLINE") ? 0xFFFF0000 : 0xFF00FF00;
-        row.child(UIComponents.label(Component.literal("●")).color(Color.ofArgb(statusColor)));
-
-        row.child(UIComponents.label(Component.literal(friend.name())));
-
-        return row;
+    private ButtonComponent createIconButton(Identifier tex, Identifier hoverTex, int iconW, int iconH, Consumer<ButtonComponent> action) {
+        ButtonComponent btn = UIComponents.button(Component.literal(""), action);
+        btn.renderer((graphics, button, delta) -> {
+            Identifier bg = button.active()
+                ? button.isHoveredOrFocused() ? ButtonComponent.HOVERED_TEXTURE : ButtonComponent.ACTIVE_TEXTURE
+                : ButtonComponent.DISABLED_TEXTURE;
+            NinePatchTexture.draw(bg, graphics, button.getX(), button.getY(), button.getWidth(), button.getHeight());
+            Identifier useTex = hoverTex != null && button.isHoveredOrFocused() ? hoverTex : tex;
+            int padX = (button.getWidth() - iconW) / 2;
+            int padY = (button.getHeight() - iconH) / 2;
+            graphics.blit(RenderPipelines.GUI_TEXTURED, useTex,
+                button.getX() + padX, button.getY() + padY,
+                0.0F, 0.0F,
+                iconW, iconH,
+                iconW, iconH,
+                0xFFFFFFFF);
+        });
+        btn.sizing(Sizing.fixed(20));
+        return btn;
     }
 
-    private FlowLayout createRequestRow(FriendsModels.RequestEntry req) {
-        var row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(25));
+    private FlowLayout createFriendRow(FriendsModels.FriendEntry friend) {
+        var row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(44));
         row.verticalAlignment(VerticalAlignment.CENTER);
-        row.padding(Insets.horizontal(8));
+        row.gap(4);
+        row.padding(Insets.of(2));
 
-        LabelComponent nameLabel = UIComponents.label(Component.literal(req.name()));
-        nameLabel.horizontalSizing(Sizing.fill(80));
-        nameLabel.verticalSizing(Sizing.content());
-        row.child(nameLabel);
+        PlayerSkin skin = SkinCache.getNow(friend.uuid());
+        var head = UIContainers.verticalFlow(Sizing.fixed(24), Sizing.fixed(24));
+        if (skin != null) {
+            head.surface((context, component) -> PlayerFaceRenderer.draw(context, skin, component.x(), component.y(), component.width()));
+        } else {
+            head.surface(Surface.flat(0xFF888888));
+        }
+        row.child(head);
 
-        var buttonGroup = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
-        buttonGroup.verticalAlignment(VerticalAlignment.CENTER);
+        var info = UIContainers.verticalFlow(Sizing.expand(100), Sizing.content());
+        info.verticalAlignment(VerticalAlignment.CENTER);
 
-        var acceptBtn = UIComponents.button(Component.literal(""), b -> {
+        LabelComponent nameLabel = UIComponents.label(Component.literal(friend.name()));
+        nameLabel.color(Color.WHITE);
+        info.child(nameLabel);
+
+        boolean online = !friend.presence().equals("OFFLINE");
+        String presenceText = switch (friend.presence()) {
+            case "IN_WORLD" -> "In World";
+            case "IN_SERVER" -> "In Server";
+            case "ONLINE" -> "Online";
+            default -> "Offline";
+        };
+        LabelComponent statusLabel = UIComponents.label(Component.literal(presenceText));
+        statusLabel.color(online ? Color.ofRgb(0x55FF55) : Color.ofRgb(0xFF5555));
+        info.child(statusLabel);
+
+        row.child(info);
+
+        var btnGroup = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
+        btnGroup.verticalAlignment(VerticalAlignment.CENTER);
+        btnGroup.gap(2);
+
+        var removeBtn = createIconButton(REMOVE_TEX, null, 14, 13, b -> {
             String myUuid = Minecraft.getInstance().getUser().getProfileId().toString();
-            CompletableFuture.supplyAsync(() -> FriendsApi.acceptRequest(myUuid, req.uuid()))
+            CompletableFuture.supplyAsync(() -> FriendsApi.removeFriend(myUuid, friend.uuid()))
                     .thenAccept(res -> this.minecraft.execute(() -> {
                         if (res == null || !res.ok()) {
                             String err = res != null ? res.error() : "Network";
-                            ChaosCubedClient.LOGGER.error("[FriendsUI] Accept failed: {}", err);
+                            ChaosCubedClient.LOGGER.error("[FriendsUI] Remove failed: {}", err);
                             ToastManager.showErrorToast(err);
                             return;
                         }
                         loadDataAndRefresh();
                     }));
-        }).renderer((graphics, button, delta) -> {
-            Identifier bg = button.active()
-                    ? button.isHoveredOrFocused() ? ButtonComponent.HOVERED_TEXTURE : ButtonComponent.ACTIVE_TEXTURE
-                    : ButtonComponent.DISABLED_TEXTURE;
-            NinePatchTexture.draw(bg, graphics, button.getX(), button.getY(), button.getWidth(), button.getHeight());
-            Identifier tex = button.isHoveredOrFocused() ? ACCEPT_HIGHLIGHTED_TEX : ACCEPT_TEX;
-            int pad = (button.getWidth() - 18) / 2;
-            graphics.blit(RenderPipelines.GUI_TEXTURED, tex,
-                    button.getX() + pad, button.getY() + pad,
-                    0.0F, 0.0F,
-                    18, 18,
-                    18, 18,
-                    0xFFFFFFFF);
-        }).sizing(Sizing.fixed(20));
+        });
+        btnGroup.child(removeBtn);
+        row.child(btnGroup);
 
-        buttonGroup.child(acceptBtn);
-        row.child(buttonGroup);
+        return row;
+    }
 
+    private FlowLayout createRequestRow(FriendsModels.RequestEntry req) {
+        var row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(44));
+        row.verticalAlignment(VerticalAlignment.CENTER);
+        row.gap(4);
+        row.padding(Insets.of(2));
+
+        PlayerSkin skin = SkinCache.getNow(req.uuid());
+        var head = UIContainers.verticalFlow(Sizing.fixed(24), Sizing.fixed(24));
+        if (skin != null) {
+            head.surface((context, component) -> PlayerFaceRenderer.draw(context, skin, component.x(), component.y(), component.width()));
+        } else {
+            head.surface(Surface.flat(0xFF888888));
+        }
+        row.child(head);
+
+        var info = UIContainers.verticalFlow(Sizing.expand(100), Sizing.content());
+        info.verticalAlignment(VerticalAlignment.CENTER);
+
+        LabelComponent nameLabel = UIComponents.label(Component.literal(req.name()));
+        nameLabel.color(Color.WHITE);
+        info.child(nameLabel);
+
+        String subtitle = req.direction().equals("incoming") ? "Wants to be friends" : "Request sent";
+        LabelComponent subLabel = UIComponents.label(Component.literal(subtitle));
+        subLabel.color(Color.ofRgb(0xAAAAAA));
+        info.child(subLabel);
+
+        row.child(info);
+
+        var btnGroup = UIContainers.horizontalFlow(Sizing.content(), Sizing.content());
+        btnGroup.verticalAlignment(VerticalAlignment.CENTER);
+        btnGroup.gap(2);
+
+        String myUuid = Minecraft.getInstance().getUser().getProfileId().toString();
+
+        if (req.direction().equals("incoming")) {
+            var acceptBtn = createIconButton(ACCEPT_TEX, ACCEPT_HIGHLIGHTED_TEX, 18, 18, b -> {
+                CompletableFuture.supplyAsync(() -> FriendsApi.acceptRequest(myUuid, req.uuid()))
+                        .thenAccept(res -> this.minecraft.execute(() -> {
+                            if (res == null || !res.ok()) {
+                                String err = res != null ? res.error() : "Network";
+                                ChaosCubedClient.LOGGER.error("[FriendsUI] Accept failed: {}", err);
+                                ToastManager.showErrorToast(err);
+                                return;
+                            }
+                            loadDataAndRefresh();
+                        }));
+            });
+            btnGroup.child(acceptBtn);
+
+            var rejectBtn = createIconButton(REJECT_TEX, REJECT_HIGHLIGHTED_TEX, 18, 18, b -> {
+                CompletableFuture.supplyAsync(() -> FriendsApi.rejectRequest(myUuid, req.uuid()))
+                        .thenAccept(res -> this.minecraft.execute(() -> {
+                            if (res == null || !res.ok()) {
+                                String err = res != null ? res.error() : "Network";
+                                ChaosCubedClient.LOGGER.error("[FriendsUI] Reject failed: {}", err);
+                                ToastManager.showErrorToast(err);
+                                return;
+                            }
+                            loadDataAndRefresh();
+                        }));
+            });
+            btnGroup.child(rejectBtn);
+        } else {
+            var cancelBtn = createIconButton(CANCEL_TEX, null, 16, 16, b -> {
+                CompletableFuture.supplyAsync(() -> FriendsApi.rejectRequest(myUuid, req.uuid()))
+                        .thenAccept(res -> this.minecraft.execute(() -> {
+                            if (res == null || !res.ok()) {
+                                String err = res != null ? res.error() : "Network";
+                                ChaosCubedClient.LOGGER.error("[FriendsUI] Cancel failed: {}", err);
+                                ToastManager.showErrorToast(err);
+                                return;
+                            }
+                            loadDataAndRefresh();
+                        }));
+            });
+            btnGroup.child(cancelBtn);
+        }
+
+        row.child(btnGroup);
         return row;
     }
 

@@ -43,7 +43,7 @@ export class FriendsHub {
 
 		await this.env.DB.prepare(`
 			UPDATE players
-			SET presence = 'OFFLINE', last_seen = ?
+			SET presence = 'OFFLINE', in_world = 0, current_server = NULL, last_seen = ?
 			WHERE uuid = ?
 		`).bind(now, uuid).run();
 	}
@@ -191,6 +191,31 @@ export class FriendsHub {
 		}
 	}
 
+	async notifyFriendReject(a, b) {
+		const [playerA, playerB] = await Promise.all([
+			this.env.DB.prepare("SELECT name FROM players WHERE uuid = ?").bind(a).first(),
+			this.env.DB.prepare("SELECT name FROM players WHERE uuid = ?").bind(b).first()
+		]);
+
+		const sessionA = this.sessions.get(a);
+		const sessionB = this.sessions.get(b);
+
+		if (sessionA) {
+			sessionA.send(JSON.stringify({
+				type: "friend_rejected",
+				from: b,
+				name: playerB?.name || b
+			}));
+		}
+		if (sessionB) {
+			sessionB.send(JSON.stringify({
+				type: "friend_rejected",
+				from: a,
+				name: playerA?.name || a
+			}));
+		}
+	}
+
 	async notifyAllowRequests(uuid, allow) {
 		const target = this.sessions.get(uuid);
 		if (target) {
@@ -198,6 +223,20 @@ export class FriendsHub {
 				type: "allow_requests_updated",
 				uuid,
 				allow
+			}));
+			return { notified: true };
+		}
+		return { notified: false };
+	}
+
+	async notifyPresence(uuid, presence, server) {
+		const target = this.sessions.get(uuid);
+		if (target) {
+			target.send(JSON.stringify({
+				type: "presence_update",
+				uuid,
+				presence,
+				server
 			}));
 			return { notified: true };
 		}
@@ -235,6 +274,12 @@ export class FriendsHub {
 				await this.notifyFriendRemove(body.a, body.b);
 				return json({ ok: true });
 			}
+			case "/rpc/notify-reject": {
+				if (request.method !== "POST") break;
+				const body = await request.json();
+				await this.notifyFriendReject(body.a, body.b);
+				return json({ ok: true });
+			}
 			case "/rpc/online-status": {
 				if (request.method !== "GET") break;
 				const uuid = url.searchParams.get("uuid");
@@ -245,6 +290,11 @@ export class FriendsHub {
 				if (request.method !== "POST") break;
 				const body = await request.json();
 				return json(await this.notifyAllowRequests(body.uuid, body.allow));
+			}
+			case "/rpc/notify-presence": {
+				if (request.method !== "POST") break;
+				const body = await request.json();
+				return json(await this.notifyPresence(body.uuid, body.presence, body.server));
 			}
 		}
 

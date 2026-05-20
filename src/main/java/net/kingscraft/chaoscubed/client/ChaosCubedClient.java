@@ -72,7 +72,7 @@ public class ChaosCubedClient implements ClientModInitializer {
             }
         });
 
-        // Version check on join
+        // Track presence on world/server join
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             java.util.concurrent.CompletableFuture.runAsync(() -> {
                 client.execute(() -> {
@@ -80,7 +80,34 @@ public class ChaosCubedClient implements ClientModInitializer {
                         VersionChecker.sendUpdateMessage(client.player);
                     }
                 });
+
+                String uuid = client.getUser().getProfileId().toString();
+                var serverData = client.getCurrentServer();
+                boolean local = client.isLocalServer();
+                int inWorld;
+                String server = null;
+
+                if (local && serverData == null) {
+                    inWorld = 1; // Singleplayer world
+                } else if (!local) {
+                    inWorld = 2; // Dedicated server
+                    server = serverData.ip;
+                } else {
+                    inWorld = 0; // LAN — skip
+                }
+
+                if (inWorld > 0) {
+                    FriendsApi.updateInWorld(uuid, inWorld, server);
+                }
             });
+        });
+
+        // Reset presence on world/server leave
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            String uuid = client.getUser().getProfileId().toString();
+            java.util.concurrent.CompletableFuture.runAsync(() ->
+                FriendsApi.updateInWorld(uuid, 0, null)
+            );
         });
 
         // Stop WS when the game closes (not on world leave)
